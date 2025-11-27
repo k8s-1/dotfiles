@@ -128,6 +128,8 @@ fi
 
 
 # CUSTOM
+# Prevent other users from r+w, allow read access with 022
+umask 077
 
 
 # PS1
