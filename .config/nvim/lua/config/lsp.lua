@@ -26,10 +26,10 @@ vim.api.nvim_create_autocmd('LspAttach', {
 
 -- general diagnostic config, e.g. syntax error highlighting etc...
 vim.diagnostic.config({
-  virtual_text = false,      -- Disable inline diagnostics if using virtual_lines
-  virtual_lines = false,     -- Enable virtual lines for diagnostics
-  signs = true,              -- Show signs in the gutter
-  underline = true,          -- Underline problematic text
-  update_in_insert = true,   -- Update diagnostics in insert mode
-  severity_sort = false,     -- Do not sort by severity (show all diagnostics)
+  virtual_text = false,    -- Disable inline diagnostics if using virtual_lines
+  virtual_lines = false,   -- Enable virtual lines for diagnostics
+  signs = true,            -- Show signs in the gutter
+  underline = true,        -- Underline problematic text
+  update_in_insert = true, -- Update diagnostics in insert mode
+  severity_sort = false,   -- Do not sort by severity (show all diagnostics)
 })

@@ -9,7 +9,7 @@ vim.keymap.set("n", ";", ":", { noremap = true })
 --  See `:help vim.keymap.set()`
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
-vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { noremap = true})
+vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { noremap = true })
 
 -- Diagnostic keymaps
 vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Go to previous [D]iagnostic message", noremap = true })
@@ -37,7 +37,7 @@ vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper win
 
 
 -- Resize splits.
-vim.keymap.set('n', '<M-j>', ':resize -2<CR>',          { noremap = true, silent = true })
-vim.keymap.set('n', '<M-k>', ':resize +2<CR>',          { noremap = true, silent = true })
+vim.keymap.set('n', '<M-j>', ':resize -2<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<M-k>', ':resize +2<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<M-h>', ':vertical resize +2<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<M-l>', ':vertical resize -2<CR>', { noremap = true, silent = true })
