@@ -11,12 +11,14 @@ return {
       grep = {
         rg_opts = "--hidden --column --line-number -g '!{.git,node_modules}/*'",
       },
-      files = {
+      -- TODO: broken for some reason, need to use TAB to select one by one
+      -- unclear why
+      -- files = {
         -- save entire matched file list to quick fix list, required fzf >= 0.53
-        actions = { ["ctrl-q"] = { fn = require "fzf-lua".actions.file_sel_to_qf, prefix = "select-all" } }
+        -- actions = { ["ctrl-q"] = { fn = require "fzf-lua".actions.file_sel_to_qf, prefix = "select-all" } }
         -- alternatively, press TAB / S-TAB to select / unselect specific files
         -- when done, press alt-q
-      }
+      -- }
     })
     vim.keymap.set("n", "<leader>f", "<cmd>lua require('fzf-lua').files()<CR>", { silent = true, noremap = true })
     vim.keymap.set("n", "<leader>b", "<cmd>lua require('fzf-lua').buffers()<CR>", { silent = true, noremap = true })
