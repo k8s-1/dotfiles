@@ -154,6 +154,7 @@ $ "
 
 # Exports
 export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:"$HOME"/go/bin
 
 # ENV VARS
 # export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
