@@ -117,11 +117,12 @@
 -- zb -- cursor to bottom
 
 -- -- string replace
--- search for foo in all .txt files recursively + populate quick fix :copen
+-- search for foo in all .txt files recursively + populate quick fix :copen, see fzf.lua for alternative,
 -- :vim[grep] /foo/ **/*.txt
 -- :copen -- open quick fix window
 -- apply global+confirm change operation to :copen
 -- :cdo %s/foo/bar/gc
+-- :ccl -- close quick fix
 
 -- replace all lines
 -- :%s
