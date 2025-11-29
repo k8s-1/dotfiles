@@ -29,7 +29,7 @@ require("config.lsp")
 -- put new servers into mason.lua before adding them here
 -- 2. defaults are loaded via nvim-lspconfig plugin,
 -- vim.lsp.config automatically finds nvim-lspconfig configs and merges with any local lsp/*.lua configs
--- 3. override defaults below by adding a second entry to the language_servers list
+-- 3. override defaults with vim.lsp.config or configuring /after directory
 
 -- calls ./lsp/<language-server>.lua
 local language_servers = {
@@ -49,5 +49,3 @@ end
 -- vim.lsp.config('clangd', {
 --   filetypes = { 'c' },
 -- })
-
--- LSP
