@@ -3,9 +3,6 @@ vim.g.maplocalleader = " "
 
 -- vim.keymap.set("n", "-", vim.cmd.Ex) -- open netrw
 
--- faster command access
-vim.keymap.set("n", ";", ":", { noremap = true })
-
 --  See `:help vim.keymap.set()`
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
