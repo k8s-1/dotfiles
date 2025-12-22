@@ -171,6 +171,7 @@ alias v='nvim'
 alias ac='git add . && git commit -m "..."'
 alias g='git status'
 alias gps='git push'
+alias gpl='git pull'
 
 alias tf=terraform
 
