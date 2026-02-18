@@ -13,3 +13,7 @@ Add it from
 ~/.config/.jira/.config.yml
 
 See https://github.com/ankitpokhrel/jira-cli
+
+# TODO
+- separate arch/ubuntu/common dotfiles
+- dot- prefix
