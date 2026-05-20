@@ -1,6 +1,11 @@
 # Manages $HOME configuration files
 This project contains a dotfile baselayer.
-Usage: `stow --restow .`
+
+## Install symlinks
+`stow -R .`
+
+## Uninstall symlinks
+`stow -D .`
 
 ## Setup
 1. Adjust .gitconfig
@@ -16,4 +21,3 @@ See https://github.com/ankitpokhrel/jira-cli
 
 # TODO
 - separate arch/ubuntu/common dotfiles
-- dot- prefix
