@@ -276,6 +276,18 @@ restarts ns='':
 argo-admin:
     @kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 
+# login to argocd (port-forwards argocd-server, logs in, then you can use other argo-* recipes)
+argo-login:
+    #!/bin/bash
+    password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+    echo "Port-forwarding argocd-server to localhost:8080..."
+    kubectl port-forward svc/argocd-server -n argocd 8080:443 &>/dev/null &
+    pf_pid=$!
+    sleep 2
+    argocd login localhost:8080 --username admin --password "$password" --insecure
+    kill $pf_pid 2>/dev/null
+    echo "Logged in. Run just argo-* recipes now."
+
 # delete an argocd app (cascade deletes all cluster resources)
 argo-delete:
     #!/bin/bash
@@ -285,14 +297,14 @@ argo-delete:
     [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
     argocd app delete "$app" --cascade
 
-# sync an argocd app (requires: argocd CLI logged in)
+# sync an argocd app (run just argo-login first)
 argo-sync:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
     [ -z "$app" ] && exit 0
     argocd app sync "$app"
 
-# disable auto-sync for an argocd app
+# disable auto-sync for an argocd app (run just argo-login first)
 argo-pause:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -300,7 +312,7 @@ argo-pause:
     argocd app set "$app" --sync-policy none
     echo "Auto-sync disabled for $app"
 
-# re-enable auto-sync for an argocd app
+# re-enable auto-sync for an argocd app (run just argo-login first)
 argo-resume:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -308,7 +320,7 @@ argo-resume:
     argocd app set "$app" --sync-policy automated
     echo "Auto-sync enabled for $app"
 
-# disable auto-sync for ALL argocd apps
+# disable auto-sync for ALL argocd apps (run just argo-login first)
 argo-pause-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
@@ -319,7 +331,7 @@ argo-pause-all:
     done <<< "$apps"
     echo "All apps paused."
 
-# re-enable auto-sync for ALL argocd apps
+# re-enable auto-sync for ALL argocd apps (run just argo-login first)
 argo-resume-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
