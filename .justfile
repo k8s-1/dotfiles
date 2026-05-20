@@ -66,24 +66,37 @@ logs ns='':
     echo "kubectl logs -n $ns $pod --tail=30 -f"
     kubectl logs -n "$ns" "$pod" --tail=30 -f
 
-# PVCs with status, capacity and reclaim policy
+# PVCs with status, capacity and disk usage (- if no pod is mounting it)
 pvc ns='':
     #!/bin/bash
-    kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","PVC","STATUS","CAPACITY","ACCESS","STORAGECLASS"],
-      (
-        .items[]
-        | [
-            .metadata.namespace,
-            .metadata.name,
-            .status.phase,
-            (.status.capacity.storage // "-"),
-            (.spec.accessModes[0] // "-"),
-            (.spec.storageClassName // "-")
-          ]
-      )
-      | @tsv
-    ' | column -t
+    declare -A mount_map
+    pod_mounts=$(kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      .items[] | select(.status.phase=="Running") |
+      .metadata.namespace as $ns | .metadata.name as $pod |
+      (.spec.volumes[]? | select(.persistentVolumeClaim) | .persistentVolumeClaim.claimName) as $pvc |
+      (.spec.volumes[]? | select(.persistentVolumeClaim.claimName == $pvc) | .name) as $volname |
+      .spec.containers[].volumeMounts[] | select(.name == $volname) |
+      [$ns, $pvc, $pod, .mountPath] | @tsv
+    ')
+    while IFS=$'\t' read -r mns mpvc mpod mmount; do
+        mount_map["$mns/$mpvc"]="$mpod:$mmount"
+    done <<< "$pod_mounts"
+    pvc_list=$(kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      .items[] | [.metadata.namespace, .metadata.name, .status.phase, (.status.capacity.storage // "-"), (.spec.accessModes[0] // "-"), (.spec.storageClassName // "-")] | @tsv
+    ')
+    (
+      echo -e "NAMESPACE\tPVC\tSTATUS\tCAPACITY\tUSED\tUSE%\tACCESS\tSTORAGECLASS"
+      while IFS=$'\t' read -r ns pvc status cap access sc; do
+          used="-" pct="-"
+          if [ -n "${mount_map[$ns/$pvc]}" ]; then
+              pod="${mount_map[$ns/$pvc]%%:*}"
+              mount="${mount_map[$ns/$pvc]#*:}"
+              df_line=$(kubectl exec "$pod" -n "$ns" -- df -h "$mount" 2>/dev/null | awk 'NR==2')
+              [ -n "$df_line" ] && used=$(awk '{print $3}' <<< "$df_line") && pct=$(awk '{print $5}' <<< "$df_line")
+          fi
+          echo -e "$ns\t$pvc\t$status\t$cap\t$used\t$pct\t$access\t$sc"
+      done <<< "$pvc_list"
+    ) | column -t
 
 # migrate a PVC to a new larger one
 pvc-migrate:
@@ -121,7 +134,7 @@ pvc-migrate:
             containers: [{
               name: "migrate",
               image: "busybox",
-              command: ["sleep", "3600"],
+              command: ["sleep", "86400"],
               volumeMounts: [
                 {name: "source", mountPath: "/source"},
                 {name: "dest", mountPath: "/dest"}
@@ -135,12 +148,50 @@ pvc-migrate:
         }' | kubectl apply -f -
     echo "Waiting for migration pod..."
     kubectl wait pod/pvc-migrate-temp -n "$ns" --for=condition=Ready --timeout=120s
-    echo "Copying data..."
+    echo "Copying data from $pvc to $new_pvc..."
     kubectl exec -n "$ns" pvc-migrate-temp -- cp -av /source/. /dest/
     kubectl delete pod pvc-migrate-temp -n "$ns"
+    affected=$(kubectl get deploy,statefulset,pod,job,cronjob -n "$ns" -o json 2>/dev/null | jq -r --arg pvc "$pvc" '
+      .items[] | select(.spec.template.spec.volumes[]?.persistentVolumeClaim.claimName == $pvc or .spec.volumes[]?.persistentVolumeClaim.claimName == $pvc) |
+      "\(.kind)/\(.metadata.name)"
+    ')
     echo ""
-    echo "Done. Update your deployment to use: $new_pvc"
-    echo "Then delete the old PVC: kubectl delete pvc $pvc -n $ns"
+    echo "================================================"
+    echo " Migration complete: data copied to $new_pvc"
+    echo "================================================"
+    echo ""
+    if [ -n "$affected" ]; then
+        echo "The following resources still reference the OLD PVC ($pvc):"
+        echo "$affected" | sed 's/^/  /'
+        echo ""
+        echo "Update claimName in your manifests:"
+        echo "  change: $pvc"
+        echo "  to:     $new_pvc"
+        echo ""
+        echo "Without gitops — edit each resource directly:"
+        while IFS= read -r resource; do
+            kind=$(cut -d/ -f1 <<< "$resource" | tr '[:upper:]' '[:lower:]')
+            name=$(cut -d/ -f2 <<< "$resource")
+            echo "  kubectl edit $kind $name -n $ns"
+            echo "    -> find the volume referencing $pvc and change claimName to $new_pvc"
+        done <<< "$affected"
+        echo ""
+        echo "With gitops (ArgoCD/Flux):"
+        echo "  1. just argo-pause   (pause only the affected app, not the whole cluster)"
+        echo "  2. In git, in the same commit:"
+        echo "     - Rename the PVC manifest from $pvc to $new_pvc"
+        echo "     - Update claimName in the affected deploy/statefulset to $new_pvc"
+        echo "     - Remove the old PVC manifest (or ArgoCD will recreate it empty)"
+        echo "  3. Push and just argo-resume"
+        echo ""
+        echo "Only delete the old PVC after the workload is running on $new_pvc:"
+        echo "  kubectl delete pvc $pvc -n $ns"
+    else
+        echo "Nothing in namespace '$ns' references $pvc (checked deploy, statefulset, pod, job, cronjob)."
+        echo "Safe to delete:"
+        echo "  kubectl delete pvc $pvc -n $ns"
+    fi
+    echo ""
 
 # launch network debug pod
 netshoot ns='':
@@ -220,6 +271,64 @@ restarts ns='':
       )
       | @tsv
     ' | column -t | (read -r header; echo "$header"; sort -k4 -rn)
+
+# get argocd admin password
+argo-admin:
+    @kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+
+# delete an argocd app (cascade deletes all cluster resources)
+argo-delete:
+    #!/bin/bash
+    app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    [ -z "$app" ] && exit 0
+    read -p "Delete '$app' and all its cluster resources? [y/N]: " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
+    argocd app delete "$app" --cascade
+
+# sync an argocd app (requires: argocd CLI logged in)
+argo-sync:
+    #!/bin/bash
+    app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    [ -z "$app" ] && exit 0
+    argocd app sync "$app"
+
+# disable auto-sync for an argocd app
+argo-pause:
+    #!/bin/bash
+    app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    [ -z "$app" ] && exit 0
+    argocd app set "$app" --sync-policy none
+    echo "Auto-sync disabled for $app"
+
+# re-enable auto-sync for an argocd app
+argo-resume:
+    #!/bin/bash
+    app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    [ -z "$app" ] && exit 0
+    argocd app set "$app" --sync-policy automated
+    echo "Auto-sync enabled for $app"
+
+# disable auto-sync for ALL argocd apps
+argo-pause-all:
+    #!/bin/bash
+    apps=$(argocd app list -o name 2>/dev/null)
+    [ -z "$apps" ] && echo "no apps found" && exit 1
+    while IFS= read -r app; do
+        echo "Pausing $app..."
+        argocd app set "$app" --sync-policy none
+    done <<< "$apps"
+    echo "All apps paused."
+
+# re-enable auto-sync for ALL argocd apps
+argo-resume-all:
+    #!/bin/bash
+    apps=$(argocd app list -o name 2>/dev/null)
+    [ -z "$apps" ] && echo "no apps found" && exit 1
+    while IFS= read -r app; do
+        echo "Resuming $app..."
+        argocd app set "$app" --sync-policy automated
+    done <<< "$apps"
+    echo "All apps resumed."
 
 # install: go install github.com/zegl/kube-score/cmd/kube-score@latest
 # audit cluster resources with kube-score

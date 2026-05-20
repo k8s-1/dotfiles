@@ -109,13 +109,14 @@ alias tf=terraform
 
 if command -v just &>/dev/null; then
     alias j=just
-    _j_complete() {
+    _just_complete() {
         local cur="${COMP_WORDS[COMP_CWORD]}"
         local recipes
         recipes=$(just --list --unsorted --no-aliases 2>/dev/null | awk 'NR>1 {print $1}')
         COMPREPLY=($(compgen -W "$recipes" -- "$cur"))
     }
-    complete -F _j_complete j
+    complete -F _just_complete j
+    complete -F _just_complete just
 fi
 
 if command -v kubectl &>/dev/null; then
