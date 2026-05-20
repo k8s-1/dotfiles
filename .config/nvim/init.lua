@@ -34,7 +34,7 @@ require("config.lsp")
 -- calls ./lsp/<language-server>.lua
 local language_servers = {
   "lua_ls",
-  "rust_analyzer",
+  -- "rust_analyzer",
   "bashls",
   "yamlls",
   "gopls",

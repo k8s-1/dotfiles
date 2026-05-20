@@ -155,6 +155,7 @@ $ "
 # Exports
 export PATH=$PATH:/usr/local/go/bin
 export PATH=$PATH:"$HOME"/go/bin
+export PATH=$PATH:"$HOME"/.cargo/bin
 
 # ENV VARS
 # export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
@@ -164,7 +165,7 @@ export PATH=$PATH:"$HOME"/go/bin
 
 
 # Alias
-alias up="sudo apt update && sudo apt upgrade -y && bash $HOME/other/get_helm.sh && sudo apt clean"
+alias up="sudo apt update && sudo apt upgrade -y && sudo apt clean"
 
 alias v='nvim'
 
@@ -222,3 +223,5 @@ export dry="--dry-run=client -o yaml"
 # export BROWSER="wslview"
 
 export EDITOR=nvim
+
+export PATH="$HOME/.bun/bin:$PATH"
