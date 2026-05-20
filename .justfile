@@ -19,6 +19,46 @@ issues ns='':
 pods ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o wide
 
+# describe a pod
+describe ns='':
+    #!/bin/bash
+    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    pod=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl describe pod -n $ns $pod"
+    kubectl describe pod -n "$ns" "$pod"
+
+# exec into a pod
+exec ns='':
+    #!/bin/bash
+    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    pod=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl exec -it -n $ns $pod -- bash"
+    kubectl exec -it -n "$ns" "$pod" -- bash 2>/dev/null || kubectl exec -it -n "$ns" "$pod" -- sh 2>/dev/null || echo "no shell available"
+
+# restart a deployment
+rollout ns='':
+    #!/bin/bash
+    selection=$(kubectl get deployments -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="deployment> " --height=40%)
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    deploy=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl rollout restart deployment/$deploy -n $ns"
+    kubectl rollout restart deployment/"$deploy" -n "$ns"
+
+# stream logs for a pod
+logs ns='':
+    #!/bin/bash
+    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    pod=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl logs -n $ns $pod --tail=30 -f"
+    kubectl logs -n "$ns" "$pod" --tail=30 -f
+
 # PVCs with status, capacity and reclaim policy
 pvc ns='':
     kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["NAMESPACE","PVC","STATUS","CAPACITY","ACCESS","STORAGECLASS"], (.items[] | [.metadata.namespace, .metadata.name, .status.phase, (.status.capacity.storage // "-"), (.spec.accessModes[0] // "-"), (.spec.storageClassName // "-")]) | @tsv' | column -t
@@ -50,36 +90,6 @@ pvc-migrate:
     echo "Done. Update your deployment to use: $new_pvc"
     echo "Then delete the old PVC: kubectl delete pvc $pvc -n $ns"
 
-# describe a pod
-describe ns='':
-    #!/bin/bash
-    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
-    [ -z "$selection" ] && exit 0
-    ns=$(awk '{print $1}' <<< "$selection")
-    pod=$(awk '{print $2}' <<< "$selection")
-    echo "kubectl describe pod -n $ns $pod"
-    kubectl describe pod -n "$ns" "$pod"
-
-# exec into a pod
-exec ns='':
-    #!/bin/bash
-    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
-    [ -z "$selection" ] && exit 0
-    ns=$(awk '{print $1}' <<< "$selection")
-    pod=$(awk '{print $2}' <<< "$selection")
-    echo "kubectl exec -it -n $ns $pod -- sh"
-    kubectl exec -it -n "$ns" "$pod" -- sh
-
-# restart a deployment
-rollout ns='':
-    #!/bin/bash
-    selection=$(kubectl get deployments -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="deployment> " --height=40%)
-    [ -z "$selection" ] && exit 0
-    ns=$(awk '{print $1}' <<< "$selection")
-    deploy=$(awk '{print $2}' <<< "$selection")
-    echo "kubectl rollout restart deployment/$deploy -n $ns"
-    kubectl rollout restart deployment/"$deploy" -n "$ns"
-
 # launch a netshoot debug pod
 netshoot ns='':
     #!/bin/bash
@@ -98,15 +108,9 @@ netshoot ns='':
     echo ""
     kubectl run netshoot --rm -it --image=nicolaka/netshoot -n "$ns" -- bash
 
-# stream logs for a pod
-logs ns='':
-    #!/bin/bash
-    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
-    [ -z "$selection" ] && exit 0
-    ns=$(awk '{print $1}' <<< "$selection")
-    pod=$(awk '{print $2}' <<< "$selection")
-    echo "kubectl logs -n $ns $pod --tail=30 -f"
-    kubectl logs -n "$ns" "$pod" --tail=30 -f
+# gateways and httproutes
+routes ns='':
+    kubectl get gateway,httproute {{ if ns != '' { '-n ' + ns } else { '-A' } }}
 
 # all images running in cluster
 images ns='':
