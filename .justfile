@@ -39,15 +39,22 @@ exec ns='':
     echo "kubectl exec -it -n $ns $pod -- bash"
     kubectl exec -it -n "$ns" "$pod" -- bash 2>/dev/null || kubectl exec -it -n "$ns" "$pod" -- sh 2>/dev/null || echo "no shell available"
 
-# restart a deployment
+# restart deployments (multi-select, labels visible in picker)
 rollout ns='':
     #!/bin/bash
-    selection=$(kubectl get deployments -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="deployment> " --height=40%)
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    selection=$(kubectl get deployments -n "$ns" --show-labels --no-headers | fzf --prompt="rollout restart deployment (TAB to multi-select)> " --height=40% --multi)
     [ -z "$selection" ] && exit 0
-    ns=$(awk '{print $1}' <<< "$selection")
-    deploy=$(awk '{print $2}' <<< "$selection")
-    echo "kubectl rollout restart deployment/$deploy -n $ns"
-    kubectl rollout restart deployment/"$deploy" -n "$ns"
+    while read -r line; do
+        deploy=$(awk '{print $1}' <<< "$line")
+        echo "kubectl rollout restart deployment/$deploy -n $ns"
+        kubectl rollout restart deployment/"$deploy" -n "$ns"
+    done <<< "$selection"
 
 # stream logs for a pod
 logs ns='':
