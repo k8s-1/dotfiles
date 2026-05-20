@@ -1,8 +1,8 @@
-# list available recipes
+# list recipes
 default:
     just --list --unsorted
 
-# node status and resource usage
+# get + top nodes
 nodes:
     kubectl get nodes -o wide | awk '{print $1,$2,$3,$4,$5,$6}' | column -t
     kubectl top nodes
@@ -15,11 +15,11 @@ issues ns='':
     @echo
     just restarts {{ns}}
 
-# all pods
+# get pods
 pods ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o wide
 
-# describe a pod
+# describe pods
 describe ns='':
     #!/bin/bash
     selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
@@ -29,7 +29,7 @@ describe ns='':
     echo "kubectl describe pod -n $ns $pod"
     kubectl describe pod -n "$ns" "$pod"
 
-# exec into a pod
+# exec -it pod
 exec ns='':
     #!/bin/bash
     selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
@@ -39,7 +39,7 @@ exec ns='':
     echo "kubectl exec -it -n $ns $pod -- bash"
     kubectl exec -it -n "$ns" "$pod" -- bash 2>/dev/null || kubectl exec -it -n "$ns" "$pod" -- sh 2>/dev/null || echo "no shell available"
 
-# restart deployments (multi-select, labels visible in picker)
+# restart deployment
 rollout ns='':
     #!/bin/bash
     if [ -z "{{ns}}" ]; then
@@ -56,7 +56,7 @@ rollout ns='':
         kubectl rollout restart deployment/"$deploy" -n "$ns"
     done <<< "$selection"
 
-# stream logs for a pod
+# pod logs
 logs ns='':
     #!/bin/bash
     selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
@@ -68,9 +68,24 @@ logs ns='':
 
 # PVCs with status, capacity and reclaim policy
 pvc ns='':
-    kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["NAMESPACE","PVC","STATUS","CAPACITY","ACCESS","STORAGECLASS"], (.items[] | [.metadata.namespace, .metadata.name, .status.phase, (.status.capacity.storage // "-"), (.spec.accessModes[0] // "-"), (.spec.storageClassName // "-")]) | @tsv' | column -t
+    #!/bin/bash
+    kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      ["NAMESPACE","PVC","STATUS","CAPACITY","ACCESS","STORAGECLASS"],
+      (
+        .items[]
+        | [
+            .metadata.namespace,
+            .metadata.name,
+            .status.phase,
+            (.status.capacity.storage // "-"),
+            (.spec.accessModes[0] // "-"),
+            (.spec.storageClassName // "-")
+          ]
+      )
+      | @tsv
+    ' | column -t
 
-# migrate a PVC to a new larger one (fzf picker)
+# migrate a PVC to a new larger one
 pvc-migrate:
     #!/bin/bash
     ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
@@ -82,12 +97,42 @@ pvc-migrate:
     read -p "New size (e.g. 10Gi): " new_size
     [ -z "$new_size" ] && exit 0
     new_pvc="${pvc}-migrate"
-    jq -n --arg name "$new_pvc" --arg ns "$ns" --arg mode "$access_mode" --arg sc "$storage_class" --arg size "$new_size" \
-        '{apiVersion:"v1",kind:"PersistentVolumeClaim",metadata:{name:$name,namespace:$ns},spec:{accessModes:[$mode],storageClassName:$sc,resources:{requests:{storage:$size}}}}' \
-        | kubectl apply -f -
-    jq -n --arg ns "$ns" --arg pvc "$pvc" --arg new_pvc "$new_pvc" \
-        '{apiVersion:"v1",kind:"Pod",metadata:{name:"pvc-migrate-temp",namespace:$ns},spec:{restartPolicy:"Never",containers:[{name:"migrate",image:"busybox",command:["sleep","3600"],volumeMounts:[{name:"source",mountPath:"/source"},{name:"dest",mountPath:"/dest"}]}],volumes:[{name:"source",persistentVolumeClaim:{claimName:$pvc}},{name:"dest",persistentVolumeClaim:{claimName:$new_pvc}}]}}' \
-        | kubectl apply -f -
+    jq -n \
+        --arg name "$new_pvc" --arg ns "$ns" \
+        --arg mode "$access_mode" --arg sc "$storage_class" --arg size "$new_size" \
+        '{
+          apiVersion: "v1",
+          kind: "PersistentVolumeClaim",
+          metadata: {name: $name, namespace: $ns},
+          spec: {
+            accessModes: [$mode],
+            storageClassName: $sc,
+            resources: {requests: {storage: $size}}
+          }
+        }' | kubectl apply -f -
+    jq -n \
+        --arg ns "$ns" --arg pvc "$pvc" --arg new_pvc "$new_pvc" \
+        '{
+          apiVersion: "v1",
+          kind: "Pod",
+          metadata: {name: "pvc-migrate-temp", namespace: $ns},
+          spec: {
+            restartPolicy: "Never",
+            containers: [{
+              name: "migrate",
+              image: "busybox",
+              command: ["sleep", "3600"],
+              volumeMounts: [
+                {name: "source", mountPath: "/source"},
+                {name: "dest", mountPath: "/dest"}
+              ]
+            }],
+            volumes: [
+              {name: "source", persistentVolumeClaim: {claimName: $pvc}},
+              {name: "dest", persistentVolumeClaim: {claimName: $new_pvc}}
+            ]
+          }
+        }' | kubectl apply -f -
     echo "Waiting for migration pod..."
     kubectl wait pod/pvc-migrate-temp -n "$ns" --for=condition=Ready --timeout=120s
     echo "Copying data..."
@@ -97,7 +142,7 @@ pvc-migrate:
     echo "Done. Update your deployment to use: $new_pvc"
     echo "Then delete the old PVC: kubectl delete pvc $pvc -n $ns"
 
-# launch a netshoot debug pod
+# launch network debug pod
 netshoot ns='':
     #!/bin/bash
     if [ -z "{{ns}}" ]; then
@@ -115,25 +160,66 @@ netshoot ns='':
     echo ""
     kubectl run netshoot --rm -it --image=nicolaka/netshoot -n "$ns" -- bash
 
-# gateways and httproutes
+# get gateway,httproute
 routes ns='':
     kubectl get gateway,httproute {{ if ns != '' { '-n ' + ns } else { '-A' } }}
 
-# all images running in cluster
+# list container images
 images ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '.items[].spec.containers[].image' | sort -u
 
 [private]
 failing ns='':
-    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["NAMESPACE","POD","STATUS","REASON"], (.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | [.metadata.namespace, .metadata.name, .status.phase, (.status.conditions[]? | select(.type=="Ready") | .reason // "")]) | @tsv' | column -t
+    #!/bin/bash
+    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      ["NAMESPACE","POD","STATUS","REASON"],
+      (
+        .items[]
+        | select(.status.phase != "Running" and .status.phase != "Succeeded")
+        | [
+            .metadata.namespace,
+            .metadata.name,
+            .status.phase,
+            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // ""
+          ]
+      )
+      | @tsv
+    ' | column -t
 
 [private]
 pending ns='':
-    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["NAMESPACE","POD","REASON","MESSAGE"], (.items[] | select(.status.phase=="Pending") | [.metadata.namespace, .metadata.name, (.status.conditions[]? | select(.type=="PodScheduled") | .reason // "unknown"), (.status.conditions[]? | select(.type=="PodScheduled") | .message // "")]) | @tsv' | column -t
+    #!/bin/bash
+    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      ["NAMESPACE","POD","REASON","MESSAGE"],
+      (
+        .items[]
+        | select(.status.phase=="Pending")
+        | (.status.conditions // []) as $conds
+        | [
+            .metadata.namespace,
+            .metadata.name,
+            ($conds | map(select(.type=="PodScheduled")) | .[0].reason) // "unknown",
+            ($conds | map(select(.type=="PodScheduled")) | .[0].message) // ""
+          ]
+      )
+      | @tsv
+    ' | column -t
 
 [private]
 restarts ns='':
-    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["RESTARTS","NAMESPACE","POD","CONTAINER"], (.items[] | .metadata.namespace as $ns | .metadata.name as $pod | .status.containerStatuses[]? | select(.restartCount > 0) | [(.restartCount|tostring), $ns, $pod, .name]) | @tsv' | column -t | sort -rn
+    #!/bin/bash
+    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      ["NAMESPACE","POD","CONTAINER","RESTARTS"],
+      (
+        .items[]
+        | .metadata.namespace as $ns
+        | .metadata.name as $pod
+        | .status.containerStatuses[]?
+        | select(.restartCount > 0)
+        | [$ns, $pod, .name, (.restartCount|tostring)]
+      )
+      | @tsv
+    ' | column -t | (read -r header; echo "$header"; sort -k4 -rn)
 
 # install: go install github.com/zegl/kube-score/cmd/kube-score@latest
 # audit cluster resources with kube-score
