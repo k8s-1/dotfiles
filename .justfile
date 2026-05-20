@@ -90,6 +90,12 @@ netshoot ns='':
     fi
     [ -z "$ns" ] && exit 0
     echo "kubectl run netshoot --rm -it --image=nicolaka/netshoot -n $ns -- bash"
+    echo ""
+    echo "useful commands:"
+    echo "  dig <svc>.<ns>.svc.cluster.local"
+    echo "  curl http://<svc>.<ns>.svc.cluster.local"
+    echo "  ping <pod-ip>"
+    echo ""
     kubectl run netshoot --rm -it --image=nicolaka/netshoot -n "$ns" -- bash
 
 # stream logs for a pod
