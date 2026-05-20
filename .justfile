@@ -304,7 +304,7 @@ argo-sync:
     [ -z "$app" ] && exit 0
     argocd app sync "$app"
 
-# disable auto-sync for an argocd app (run just argo-login first)
+# disable auto-sync for an argocd app (requires argo-login)
 argo-pause:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -312,7 +312,7 @@ argo-pause:
     argocd app set "$app" --sync-policy none
     echo "Auto-sync disabled for $app"
 
-# re-enable auto-sync for an argocd app (run just argo-login first)
+# re-enable auto-sync for an argocd app (requires argo-login)
 argo-resume:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -320,7 +320,7 @@ argo-resume:
     argocd app set "$app" --sync-policy automated
     echo "Auto-sync enabled for $app"
 
-# disable auto-sync for ALL argocd apps (run just argo-login first)
+# disable auto-sync for ALL argocd apps (requires argo-login)
 argo-pause-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
@@ -331,7 +331,7 @@ argo-pause-all:
     done <<< "$apps"
     echo "All apps paused."
 
-# re-enable auto-sync for ALL argocd apps (run just argo-login first)
+# re-enable auto-sync for ALL argocd apps (requires argo-login)
 argo-resume-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
