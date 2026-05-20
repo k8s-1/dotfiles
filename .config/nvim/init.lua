@@ -1,3 +1,5 @@
+vim.env.PATH = "/usr/bin:" .. vim.env.PATH
+
 require("config.keymaps")
 require("config.options")
 require("config.autocmds")
