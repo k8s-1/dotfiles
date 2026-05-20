@@ -130,7 +130,7 @@ kx () {
 
 kn () {
   local namespace
-  namespace=$(kubectl get namespace -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | fzf --prompt="Select Kubernetes namespace: " --heigh=10 --reverse)
+  namespace=$(kubectl get namespace -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | fzf --prompt="Select Kubernetes namespace: " --height=10)
 
   if [ -n "$namespace" ]; then
     kubectl config set-context --current --namespace="$namespace"
