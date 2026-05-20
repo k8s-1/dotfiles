@@ -19,8 +19,39 @@ issues ns='':
 pods ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o wide
 
+# PVCs with status, capacity and reclaim policy
+pvc ns='':
+    kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '["NAMESPACE","PVC","STATUS","CAPACITY","ACCESS","STORAGECLASS"], (.items[] | [.metadata.namespace, .metadata.name, .status.phase, (.status.capacity.storage // "-"), (.spec.accessModes[0] // "-"), (.spec.storageClassName // "-")]) | @tsv' | column -t
+
+# migrate a PVC to a new larger one (fzf picker)
+pvc-migrate:
+    #!/bin/bash
+    ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    [ -z "$ns" ] && exit 0
+    pvc=$(kubectl get pvc -n "$ns" --no-headers | fzf --prompt="pvc> " --height=40% | awk '{print $1}')
+    [ -z "$pvc" ] && exit 0
+    access_mode=$(kubectl get pvc -n "$ns" "$pvc" -o jsonpath='{.spec.accessModes[0]}')
+    storage_class=$(kubectl get pvc -n "$ns" "$pvc" -o jsonpath='{.spec.storageClassName}')
+    read -p "New size (e.g. 10Gi): " new_size
+    [ -z "$new_size" ] && exit 0
+    new_pvc="${pvc}-migrate"
+    jq -n --arg name "$new_pvc" --arg ns "$ns" --arg mode "$access_mode" --arg sc "$storage_class" --arg size "$new_size" \
+        '{apiVersion:"v1",kind:"PersistentVolumeClaim",metadata:{name:$name,namespace:$ns},spec:{accessModes:[$mode],storageClassName:$sc,resources:{requests:{storage:$size}}}}' \
+        | kubectl apply -f -
+    jq -n --arg ns "$ns" --arg pvc "$pvc" --arg new_pvc "$new_pvc" \
+        '{apiVersion:"v1",kind:"Pod",metadata:{name:"pvc-migrate-temp",namespace:$ns},spec:{restartPolicy:"Never",containers:[{name:"migrate",image:"busybox",command:["sleep","3600"],volumeMounts:[{name:"source",mountPath:"/source"},{name:"dest",mountPath:"/dest"}]}],volumes:[{name:"source",persistentVolumeClaim:{claimName:$pvc}},{name:"dest",persistentVolumeClaim:{claimName:$new_pvc}}]}}' \
+        | kubectl apply -f -
+    echo "Waiting for migration pod..."
+    kubectl wait pod/pvc-migrate-temp -n "$ns" --for=condition=Ready --timeout=120s
+    echo "Copying data..."
+    kubectl exec -n "$ns" pvc-migrate-temp -- cp -av /source/. /dest/
+    kubectl delete pod pvc-migrate-temp -n "$ns"
+    echo ""
+    echo "Done. Update your deployment to use: $new_pvc"
+    echo "Then delete the old PVC: kubectl delete pvc $pvc -n $ns"
+
 # describe a pod
-desc ns='':
+describe ns='':
     #!/bin/bash
     selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
     [ -z "$selection" ] && exit 0
@@ -28,6 +59,38 @@ desc ns='':
     pod=$(awk '{print $2}' <<< "$selection")
     echo "kubectl describe pod -n $ns $pod"
     kubectl describe pod -n "$ns" "$pod"
+
+# exec into a pod
+exec ns='':
+    #!/bin/bash
+    selection=$(kubectl get pods -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="pod> " --height=40% --preview "kubectl get pod -n {1} {2} -o wide")
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    pod=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl exec -it -n $ns $pod -- sh"
+    kubectl exec -it -n "$ns" "$pod" -- sh
+
+# restart a deployment
+rollout ns='':
+    #!/bin/bash
+    selection=$(kubectl get deployments -A {{ if ns != '' { '--field-selector metadata.namespace={{ns}}' } else { '' } }} --no-headers | fzf --prompt="deployment> " --height=40%)
+    [ -z "$selection" ] && exit 0
+    ns=$(awk '{print $1}' <<< "$selection")
+    deploy=$(awk '{print $2}' <<< "$selection")
+    echo "kubectl rollout restart deployment/$deploy -n $ns"
+    kubectl rollout restart deployment/"$deploy" -n "$ns"
+
+# launch a netshoot debug pod
+netshoot ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    echo "kubectl run netshoot --rm -it --image=nicolaka/netshoot -n $ns -- bash"
+    kubectl run netshoot --rm -it --image=nicolaka/netshoot -n "$ns" -- bash
 
 # stream logs for a pod
 logs ns='':

@@ -107,7 +107,16 @@ alias gpl='git pull'
 
 alias tf=terraform
 
-alias j=just
+if command -v just &>/dev/null; then
+    alias j=just
+    _j_complete() {
+        local cur="${COMP_WORDS[COMP_CWORD]}"
+        local recipes
+        recipes=$(just --list --unsorted --no-aliases 2>/dev/null | awk 'NR>1 {print $1}')
+        COMPREPLY=($(compgen -W "$recipes" -- "$cur"))
+    }
+    complete -F _j_complete j
+fi
 
 if command -v kubectl &>/dev/null; then
   # cache completion script — regenerate only when kubectl binary is newer than cache
