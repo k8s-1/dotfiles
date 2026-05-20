@@ -112,7 +112,10 @@ alias gpl='git pull'
 alias tf=terraform
 
 if command -v kubectl &>/dev/null; then
-  source <(kubectl completion bash)
+  # cache completion script — regenerate only when kubectl binary is newer than cache
+  _kc="$HOME/.cache/kubectl_completion.bash"
+  [ "$_kc" -ot "$(command -v kubectl)" ] && kubectl completion bash > "$_kc"
+  source "$_kc"
   alias k=kubectl
   complete -o default -F __start_kubectl k
 fi
