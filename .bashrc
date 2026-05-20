@@ -68,12 +68,12 @@ fi
 umask 077
 
 # PS1
-function parse_git_dirty {
-	[[ $(git status --porcelain 2>/dev/null) ]] && echo "*"
-}
-
-function parse_git_branch {
-	git branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/ (\1$(parse_git_dirty))/"
+function parse_git_info {
+  local branch
+  branch=$(git branch --no-color 2>/dev/null | sed -n 's/^\* //p')
+  [ -z "$branch" ] && return
+  [[ $(git status --porcelain 2>/dev/null) ]] && branch="${branch}*"
+  echo " ($branch)"
 }
 
 kcontext() {
@@ -82,7 +82,7 @@ kcontext() {
 }
 
 PS1="\[\033[32m\]\w\
-\[\033[33m\]\$(parse_git_branch)\[\033[00m\] \
+\[\033[33m\]\$(parse_git_info)\[\033[00m\] \
 \[\033[94m\]\$(kcontext)\[\033[00m\] \
 $ "
 
@@ -92,8 +92,10 @@ export PATH=$PATH:"$HOME"/go/bin
 export PATH=$PATH:"$HOME"/.cargo/bin
 
 # ENV
-# export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
-# eval "$(cd "$HOME/.token" && sops -d token.enc)"
+# [ -f "$HOME/.config/sops/age/keys.txt" ] && export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+# if command -v sops &>/dev/null && [ -f "$HOME/.token/token.enc" ]; then
+#   eval "$(cd "$HOME/.token" && sops -d token.enc)"
+# fi
 # ~/.token/token.enc:
 # export VAR=...
 
@@ -109,9 +111,11 @@ alias gpl='git pull'
 
 alias tf=terraform
 
-source <(kubectl completion bash)
-alias k=kubectl
-complete -o default -F __start_kubectl k
+if command -v kubectl &>/dev/null; then
+  source <(kubectl completion bash)
+  alias k=kubectl
+  complete -o default -F __start_kubectl k
+fi
 
 # Show/set kube context/namespace
 kx () {
@@ -149,8 +153,10 @@ alias f="bash ~/scripts/repofinder.sh"
 export dry="--dry-run=client -o yaml"
 
 # JIRA CLI
-# source <(jira completion bash)
-# alias jil="jira issue list --assignee \"$(jira me)\" -s\"To Do\" -s\"In Progress\" --columns key,summary,status,updated"
+# if command -v jira &>/dev/null; then
+#   source <(jira completion bash)
+#   alias jil="jira issue list --assignee \"$(jira me)\" -s\"To Do\" -s\"In Progress\" --columns key,summary,status,updated"
+# fi
 
 # WSL2
 # export BROWSER="wslview"
