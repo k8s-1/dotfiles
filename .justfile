@@ -288,7 +288,7 @@ argo-login:
     kill $pf_pid 2>/dev/null
     echo "Logged in. Run just argo-* recipes now."
 
-# delete an argocd app (cascade deletes all cluster resources)
+# delete an argocd app
 argo-delete:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -297,14 +297,14 @@ argo-delete:
     [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
     argocd app delete "$app" --cascade
 
-# sync an argocd app (run just argo-login first)
+# sync an argocd app
 argo-sync:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
     [ -z "$app" ] && exit 0
     argocd app sync "$app"
 
-# disable auto-sync for an argocd app (requires argo-login)
+# disable auto-sync for an argocd app
 argo-pause:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -312,7 +312,7 @@ argo-pause:
     argocd app set "$app" --sync-policy none
     echo "Auto-sync disabled for $app"
 
-# re-enable auto-sync for an argocd app (requires argo-login)
+# re-enable auto-sync for an argocd app
 argo-resume:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
@@ -320,7 +320,7 @@ argo-resume:
     argocd app set "$app" --sync-policy automated
     echo "Auto-sync enabled for $app"
 
-# disable auto-sync for ALL argocd apps (requires argo-login)
+# disable auto-sync for ALL argocd apps
 argo-pause-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
@@ -331,7 +331,7 @@ argo-pause-all:
     done <<< "$apps"
     echo "All apps paused."
 
-# re-enable auto-sync for ALL argocd apps (requires argo-login)
+# re-enable auto-sync for ALL argocd apps
 argo-resume-all:
     #!/bin/bash
     apps=$(argocd app list -o name 2>/dev/null)
