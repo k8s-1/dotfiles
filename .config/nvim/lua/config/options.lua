@@ -44,8 +44,6 @@ vim.opt.signcolumn = "yes"
 -- Decrease plugin update time, default 4000
 vim.opt.updatetime = 300
 
--- Decrease mapped sequence wait time
--- Displays which-key popup sooner
 vim.opt.timeoutlen = 300
 
 -- Configure how new splits should be opened
@@ -69,13 +67,6 @@ vim.opt.scrolloff = 10
 
 -- Make neovim work with tmux
 vim.opt.termguicolors = true
-
--- Disable netrw at the very start of your init.lua
--- according to nvim.tree README
--- only needed for nvim-tree
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
-
 
 -- Enable folding
 -- use za to toggle folds
