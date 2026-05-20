@@ -49,10 +49,6 @@ if [ -x /usr/bin/dircolors ]; then
     alias grep='grep --color=auto'
 fi
 
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
@@ -110,6 +106,8 @@ alias gps='git push'
 alias gpl='git pull'
 
 alias tf=terraform
+
+alias j=just
 
 if command -v kubectl &>/dev/null; then
   # cache completion script — regenerate only when kubectl binary is newer than cache
