@@ -5,16 +5,16 @@ default:
 # get + top nodes with last ready time
 nodes:
     kubectl get nodes -o json | jq -r '
-      ["NAME","STATUS","VERSION","LAST-READY"],
-      (.items[] |
-        (.status.conditions[] | select(.type=="Ready")) as $ready |
-        [
-          .metadata.name,
-          (if $ready.status == "True" then "Ready" else "NotReady" end),
-          .status.nodeInfo.kubeletVersion,
-          $ready.lastTransitionTime
-        ]
-      ) | @tsv
+    ["NAME","STATUS","VERSION","LAST-READY"],
+    (.items[] |
+    (.status.conditions[] | select(.type=="Ready")) as $ready |
+    [
+    .metadata.name,
+    (if $ready.status == "True" then "Ready" else "NotReady" end),
+    .status.nodeInfo.kubeletVersion,
+    $ready.lastTransitionTime
+    ]
+    ) | @tsv
     ' | column -t
     @echo
     kubectl top nodes
@@ -30,19 +30,19 @@ issues ns='':
 # get pods with last ready time
 pods ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","POD","STATUS","RESTARTS","READY-SINCE","NODE"],
-      (.items[] |
-        (.status.conditions[]? | select(.type=="Ready")) as $ready |
-        (.status.containerStatuses // [] | map(.restartCount) | add // 0) as $restarts |
-        [
-          .metadata.namespace,
-          .metadata.name,
-          .status.phase,
-          ($restarts | tostring),
-          ($ready.lastTransitionTime // "-"),
-          (.spec.nodeName // "-")
-        ]
-      ) | @tsv
+    ["NAMESPACE","POD","STATUS","RESTARTS","READY-SINCE","NODE"],
+    (.items[] |
+    (.status.conditions[]? | select(.type=="Ready")) as $ready |
+    (.status.containerStatuses // [] | map(.restartCount) | add // 0) as $restarts |
+    [
+    .metadata.namespace,
+    .metadata.name,
+    .status.phase,
+    ($restarts | tostring),
+    ($ready.lastTransitionTime // "-"),
+    (.spec.nodeName // "-")
+    ]
+    ) | @tsv
     ' | column -t
 
 # describe pods
@@ -252,7 +252,7 @@ top ns='':
 # cluster events sorted by time
 events ns='':
     kubectl get events {{ if ns != '' { '-n ' + ns } else { '-A' } }} --sort-by='.lastTimestamp' \
-      -o custom-columns='TIME:.lastTimestamp,NS:.metadata.namespace,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.name,MSG:.message'
+    -o custom-columns='TIME:.lastTimestamp,NS:.metadata.namespace,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.name,MSG:.message'
 
 # port-forward a service
 forward ns='':
