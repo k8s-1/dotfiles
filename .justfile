@@ -2,9 +2,21 @@
 default:
     just --list --unsorted
 
-# get + top nodes
+# get + top nodes with last ready time
 nodes:
-    kubectl get nodes -o wide | awk '{print $1,$2,$3,$4,$5,$6}' | column -t
+    kubectl get nodes -o json | jq -r '
+      ["NAME","STATUS","VERSION","LAST-READY"],
+      (.items[] |
+        (.status.conditions[] | select(.type=="Ready")) as $ready |
+        [
+          .metadata.name,
+          (if $ready.status == "True" then "Ready" else "NotReady" end),
+          .status.nodeInfo.kubeletVersion,
+          $ready.lastTransitionTime
+        ]
+      ) | @tsv
+    ' | column -t
+    @echo
     kubectl top nodes
 
 # pending, failing and restarting pods
@@ -15,9 +27,23 @@ issues ns='':
     @echo
     just restarts {{ns}}
 
-# get pods
+# get pods with last ready time
 pods ns='':
-    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o wide
+    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
+      ["NAMESPACE","POD","STATUS","RESTARTS","READY-SINCE","NODE"],
+      (.items[] |
+        (.status.conditions[]? | select(.type=="Ready")) as $ready |
+        (.status.containerStatuses // [] | map(.restartCount) | add // 0) as $restarts |
+        [
+          .metadata.namespace,
+          .metadata.name,
+          .status.phase,
+          ($restarts | tostring),
+          ($ready.lastTransitionTime // "-"),
+          (.spec.nodeName // "-")
+        ]
+      ) | @tsv
+    ' | column -t
 
 # describe pods
 describe ns='':
@@ -218,6 +244,46 @@ routes ns='':
 # list container images
 images ns='':
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '.items[].spec.containers[].image' | sort -u
+
+# pod CPU/memory usage
+top ns='':
+    kubectl top pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} --sort-by=memory
+
+# cluster events sorted by time
+events ns='':
+    kubectl get events {{ if ns != '' { '-n ' + ns } else { '-A' } }} --sort-by='.lastTimestamp' \
+      -o custom-columns='TIME:.lastTimestamp,NS:.metadata.namespace,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.name,MSG:.message'
+
+# port-forward a service
+forward ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    svc=$(kubectl get svc -n "$ns" --no-headers | fzf --prompt="svc> " --height=40% | awk '{print $1}')
+    [ -z "$svc" ] && exit 0
+    svc_port=$(kubectl get svc "$svc" -n "$ns" -o jsonpath='{.spec.ports[0].port}')
+    echo "kubectl port-forward svc/$svc -n $ns 8080:$svc_port"
+    echo "Open: http://localhost:8080"
+    kubectl port-forward svc/"$svc" -n "$ns" "8080:$svc_port"
+
+# decode a secret
+secrets ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    secret=$(kubectl get secret -n "$ns" --no-headers | fzf --prompt="secret> " --height=40% | awk '{print $1}')
+    [ -z "$secret" ] && exit 0
+    kubectl get secret "$secret" -n "$ns" -o json | jq -r '
+      .data // {} | to_entries[] | "\(.key): \(.value | @base64d)"
+    '
 
 [private]
 failing ns='':
