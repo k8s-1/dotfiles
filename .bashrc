@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
@@ -38,7 +39,7 @@ fi
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    if test -r ~/.dircolors; then eval "$(dircolors -b ~/.dircolors)"; else eval "$(dircolors -b)"; fi
     alias ls='ls --color=auto'
     alias dir='dir --color=auto'
     alias grep='grep --color=auto'
@@ -49,8 +50,10 @@ fi
 # sources /etc/bash.bashrc).
 if ! shopt -oq posix; then
   if [ -f /usr/share/bash-completion/bash_completion ]; then
+    # shellcheck source=/dev/null
     . /usr/share/bash-completion/bash_completion
   elif [ -f /etc/bash_completion ]; then
+    # shellcheck source=/dev/null
     . /etc/bash_completion
   fi
 fi
@@ -108,7 +111,7 @@ if command -v just &>/dev/null; then
         local cur="${COMP_WORDS[COMP_CWORD]}"
         local recipes
         recipes=$(just --list --unsorted --no-aliases 2>/dev/null | awk 'NR>1 {print $1}')
-        COMPREPLY=($(compgen -W "$recipes" -- "$cur"))
+        mapfile -t COMPREPLY < <(compgen -W "$recipes" -- "$cur")
     }
     complete -F _just_complete j
     complete -F _just_complete just
@@ -118,6 +121,7 @@ if command -v kubectl &>/dev/null; then
   # cache completion script — regenerate only when kubectl binary is newer than cache
   _kc="$HOME/.cache/kubectl_completion.bash"
   [ "$_kc" -ot "$(command -v kubectl)" ] && kubectl completion bash > "$_kc"
+  # shellcheck source=/dev/null
   source "$_kc"
   alias k=kubectl
   complete -o default -F __start_kubectl k
@@ -159,6 +163,7 @@ export dry="--dry-run=client -o yaml"
 
 # JIRA CLI
 if command -v jira &>/dev/null; then
+  # shellcheck source=/dev/null
   source <(jira completion bash)
   jil() {
     jira issue list --assignee "$(jira me)" -s"To Do" -s"In Progress" --columns key,summary,status,updated
