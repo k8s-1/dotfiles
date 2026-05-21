@@ -68,13 +68,13 @@ function parse_git_info {
   local branch
   branch=$(git branch --no-color 2>/dev/null | sed -n 's/^\* //p')
   [ -z "$branch" ] && return
-  [[ $(git status --porcelain 2>/dev/null) ]] && branch="${branch}*"
+  [[ $(timeout 0.5 git status --porcelain 2>/dev/null) ]] && branch="${branch}*"
   echo " ($branch)"
 }
 
 kcontext() {
   local current_context
-  current_context=$(kubectl config current-context 2>/dev/null) && echo "(☸ $current_context)"
+  current_context=$(timeout 0.1 kubectl config current-context 2>/dev/null) && echo "(☸ $current_context)"
 }
 
 PS1="\[\033[32m\]\w\
@@ -126,27 +126,26 @@ if command -v kubectl &>/dev/null; then
   source "$_kc"
   alias k=kubectl
   complete -o default -F __start_kubectl k
+
+  kx() {
+    local context
+    context=$(kubectl config get-contexts -o name | fzf)
+    if [ -n "$context" ]; then
+      kubectl config use-context "$context"
+    fi
+  }
+
+  kn() {
+    local namespace
+    namespace=$(kubectl get namespace -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | fzf --prompt="Select Kubernetes namespace: " --height=10)
+    if [ -n "$namespace" ]; then
+      kubectl config set-context --current --namespace="$namespace"
+      echo "Switched to namespace: $namespace"
+    else
+      echo "No namespace selected."
+    fi
+  }
 fi
-
-# Show/set kube context/namespace
-kx () {
-  context=$(kubectl config get-contexts -o name | fzf)
-  if [ -n "$context" ]; then
-    kubectl config use-context "$context"
-  fi
-}
-
-kn () {
-  local namespace
-  namespace=$(kubectl get namespace -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | fzf --prompt="Select Kubernetes namespace: " --height=10)
-
-  if [ -n "$namespace" ]; then
-    kubectl config set-context --current --namespace="$namespace"
-    echo "Switched to namespace: $namespace"
-  else
-    echo "No namespace selected."
-  fi
-}
 
 kindcluster() {
   kind delete cluster && kind create cluster --config - <<EOF
@@ -164,13 +163,16 @@ alias f="bash ~/scripts/repofinder.sh"
 export dry="--dry-run=client -o yaml"
 
 # JIRA CLI
-# if command -v jira &>/dev/null; then
-#   source <(jira completion bash)
-#   alias jil="jira issue list --assignee \"$(jira me)\" -s\"To Do\" -s\"In Progress\" --columns key,summary,status,updated"
-# fi
+if command -v jira &>/dev/null; then
+  source <(jira completion bash)
+  jil() {
+    jira issue list --assignee "$(jira me)" -s"To Do" -s"In Progress" --columns key,summary,status,updated
+  }
+fi
 
-# WSL2
-# export BROWSER="wslview"
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  export BROWSER="wslview"
+fi
 
 export EDITOR=nvim
 
