@@ -289,7 +289,7 @@ secrets ns='':
 failing ns='':
     #!/bin/bash
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","POD","STATUS","REASON"],
+      ["NAMESPACE","POD","STATUS","REASON","FAILING-SINCE"],
       (
         .items[]
         | select(.status.phase != "Running" and .status.phase != "Succeeded")
@@ -297,7 +297,8 @@ failing ns='':
             .metadata.namespace,
             .metadata.name,
             .status.phase,
-            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // ""
+            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // "",
+            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].lastTransitionTime) // (.metadata.creationTimestamp // "-")
           ]
       )
       | @tsv
@@ -307,7 +308,7 @@ failing ns='':
 pending ns='':
     #!/bin/bash
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","POD","REASON","MESSAGE"],
+      ["NAMESPACE","POD","REASON","PENDING-SINCE","MESSAGE"],
       (
         .items[]
         | select(.status.phase=="Pending")
@@ -316,6 +317,7 @@ pending ns='':
             .metadata.namespace,
             .metadata.name,
             ($conds | map(select(.type=="PodScheduled")) | .[0].reason) // "unknown",
+            (.metadata.creationTimestamp // "-"),
             ($conds | map(select(.type=="PodScheduled")) | .[0].message) // ""
           ]
       )
@@ -326,14 +328,14 @@ pending ns='':
 restarts ns='':
     #!/bin/bash
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","POD","CONTAINER","RESTARTS"],
+      ["NAMESPACE","POD","CONTAINER","RESTARTS","LAST-RESTART"],
       (
         .items[]
         | .metadata.namespace as $ns
         | .metadata.name as $pod
         | .status.containerStatuses[]?
         | select(.restartCount > 0)
-        | [$ns, $pod, .name, (.restartCount|tostring)]
+        | [$ns, $pod, .name, (.restartCount|tostring), (.lastState.terminated.finishedAt // "-")]
       )
       | @tsv
     ' | column -t | (read -r header; echo "$header"; sort -k4 -rn)
