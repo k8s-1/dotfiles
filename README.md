@@ -8,7 +8,7 @@ This project contains a dotfile baselayer.
 `stow -D .`
 
 ## Setup
-1. Adjust .gitconfig
+1. Adjust .gitconfig and setup git signing
 
 2. To generate jira cli config,
 ```
@@ -19,5 +19,4 @@ Add it from
 
 See https://github.com/ankitpokhrel/jira-cli
 
-# TODO
-- separate arch/ubuntu/common dotfiles
+3. Copy wslconfig to Windows host if using WSL
