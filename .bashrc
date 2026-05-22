@@ -67,7 +67,8 @@ function parse_git_info {
 
 kcontext() {
   local current_context
-  current_context=$(timeout 0.1 kubectl config current-context 2>/dev/null) && echo "(☸ $current_context)"
+  current_context="${KUBE_CURRENT_CONTEXT:-$(timeout 0.1 kubectl config current-context 2>/dev/null)}"
+  [[ -n "$current_context" ]]  && echo "(☸ $current_context)"
 }
 
 PS1="\[\033[32m\]\w\
@@ -131,6 +132,7 @@ if command -v kubectl &>/dev/null; then
     ctx=$(kubectl config get-contexts -o name | fzf)
     if [ -n "$ctx" ]; then
       kubectl config use-context "$ctx"
+      export KUBE_CURRENT_CONTEXT="$ctx"
     fi
   }
 
