@@ -305,7 +305,7 @@ failing ns='':
           ]
       )
       | @tsv
-    ' | column -t
+    ' | column -t | (read -r header; echo "$header"; sort -k4)
 
 [private]
 pending ns='':
@@ -325,7 +325,7 @@ pending ns='':
           ]
       )
       | @tsv
-    ' | column -t
+    ' | column -t | (read -r header; echo "$header"; sort -k4)
 
 [private]
 restarts ns='':
@@ -341,7 +341,7 @@ restarts ns='':
         | [$ns, $pod, .name, (.restartCount|tostring), (.lastState.terminated.finishedAt // "-")]
       )
       | @tsv
-    ' | column -t | (read -r header; echo "$header"; sort -k4 -n)
+    ' | column -t | (read -r header; echo "$header"; sort -k5)
 
 # delete evicted/error/completed pods and unbound PVCs/PVs older than N days (default: 30)
 cluster-clean days='30':
