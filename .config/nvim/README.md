@@ -74,11 +74,6 @@ end
 globalvar
 local localvar
 
-## Future Roadmap
-- https://github.com/rmagatti/auto-session
-- https://github.com/cljoly/telescope-repo.nvim?tab=readme-ov-file
-- https://github.com/ahmedkhalf/project.nvim
-
 ## Workflow Tips
 - ctrl+6 to toggle between current and alternative buffer
 - :b <TAB> to browse buffers quickly
@@ -114,6 +109,13 @@ viwp
 vi"p
 - paste another register into quotes
 vi""2p
+
+### Multi-File Search/Replace
+:vimgrep /Neovim/gj **/*
+:vimgrep /Neovim/gj **/*.vim
+
+g: Add all matches in a line to the quickfix list.
+j: Do not jump the cursor to the location of first pattern match.
 
 
 

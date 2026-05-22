@@ -72,3 +72,6 @@ vim.opt.termguicolors = true
 -- use za to toggle folds
 vim.opt.foldmethod = "manual"
 vim.opt.foldenable = true
+
+vim.opt.grepprg = "rg --vimgrep --no-heading --smart-case"
+vim.opt.grepformat = "%f:%l:%c:%m"
