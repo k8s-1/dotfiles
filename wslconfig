@@ -1,4 +1,4 @@
-# Copy this file to C:\Users\<username>\.wslconfig on the Windows host
+# Copy this file to C:\Users\<username>\.wslconfig
 
 [wsl2]
 memory=8GB
