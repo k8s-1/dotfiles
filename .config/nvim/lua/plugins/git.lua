@@ -17,15 +17,9 @@ return {
           handle:close()
 
           local commit_message = 'chore: update file(s):'
-          local unique_files = {}
 
           for filename in modified_files:gmatch("[^\r\n]+") do
-            local basename = filename:match("[^/\\]+$")
-
-            if not unique_files[basename] then
-              unique_files[basename] = true
-              commit_message = commit_message .. " " .. basename
-            end
+            commit_message = commit_message .. " " .. filename
           end
 
           print("Committing with message: " .. commit_message)

@@ -86,10 +86,10 @@ export PATH=$PATH:"$HOME"/go/bin
 export PATH=$PATH:"$HOME"/.cargo/bin
 
 # ENV
-# [ -f "$HOME/.config/sops/age/keys.txt" ] && export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
-# if command -v sops &>/dev/null && [ -f "$HOME/.token/token.enc" ]; then
-#   eval "$(cd "$HOME/.token" && sops -d token.enc)"
-# fi
+[ -f "$HOME/.config/sops/age/keys.txt" ] && export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+if command -v sops &>/dev/null && [ -s "$HOME/.token/token.enc" ]; then
+  eval "$(sops -d "$HOME/.token/token.enc")"
+fi
 # ~/.token/token.enc:
 # export VAR=...
 
@@ -98,8 +98,9 @@ alias up="sudo apt update && sudo apt upgrade -y && sudo apt clean"
 
 alias v='nvim'
 
-alias ac='git add . && git commit -m "..."'
+alias ac='git add . && git commit -m "chore: update file(s): $(git diff --cached --name-only | tr "\n" " ")"'
 alias g='git status'
+alias gl='git log --oneline --graph'
 alias gps='git push'
 alias gpl='git pull'
 
@@ -177,3 +178,10 @@ fi
 export EDITOR=nvim
 
 export PATH="$HOME/.bun/bin:$PATH"
+
+# fzf keybindings: Ctrl+R history, Ctrl+T insert file path, Alt+C cd, **<Tab> fuzzy complete
+command -v fzf &>/dev/null && eval "$(fzf --bash)"
+
+if command -v terraform &>/dev/null; then
+  complete -C terraform terraform tf
+fi

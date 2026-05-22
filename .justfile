@@ -338,6 +338,19 @@ restarts ns='':
       | @tsv
     ' | column -t | (read -r header; echo "$header"; sort -k4 -rn)
 
+# install: go install github.com/zegl/kube-score/cmd/kube-score@latest
+# audit cluster resources with kube-score
+audit ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    echo "kubectl get pods,deployments,services -n $ns -o yaml | kube-score score -"
+    kubectl get pods,deployments,services -n "$ns" -o yaml | kube-score score - || true
+
 # get argocd admin password
 argo-admin:
     @kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
@@ -407,17 +420,4 @@ argo-resume-all:
         argocd app set "$app" --sync-policy automated
     done <<< "$apps"
     echo "All apps resumed."
-
-# install: go install github.com/zegl/kube-score/cmd/kube-score@latest
-# audit cluster resources with kube-score
-audit ns='':
-    #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
-    [ -z "$ns" ] && exit 0
-    echo "kubectl get pods,deployments,services -n $ns -o yaml | kube-score score -"
-    kubectl get pods,deployments,services -n "$ns" -o yaml | kube-score score - || true
 
