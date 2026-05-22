@@ -100,7 +100,7 @@ alias v='nvim'
 
 alias ac='git add . && git commit -m "chore: update file(s): $(git diff --cached --name-only | tr "\n" " ")"'
 alias g='git status'
-alias gl='git log --oneline --graph'
+alias gl='git log --oneline --graph --format="%C(yellow)%h%C(reset) %C(cyan)%an%C(reset) %C(green)%ar%C(reset) %s"'
 alias gps='git push'
 alias gpl='git pull'
 
