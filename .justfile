@@ -517,10 +517,15 @@ clean-cluster days='30':
       ) |
       .metadata.name
     ')
-    [ -n "$bound_pvcs" ]   && echo "$bound_pvcs"  | awk -F'\t' '{print "    pvc (bound)   " $1 "/" $2}' || echo "    (none)"
+    [ -n "$bound_pvcs" ]   && echo "$bound_pvcs"  | awk -F'\t' '{print "    pvc (bound)   " $1 "/" $2}'
     [ -n "$unbound_pvcs" ] && echo "$unbound_pvcs" | awk -F'\t' '{print "    pvc (unbound) " $1 "/" $2}'
     echo "==> [4/4] PVs to delete..."
-    [ -n "$unbound_pvs" ] && echo "$unbound_pvs" | awk '{print "    pv " $1}' || echo "    (none)"
+    [ -n "$unbound_pvs" ] && echo "$unbound_pvs" | awk '{print "    pv " $1}'
+    if [ -z "$bound_pvcs" ] && [ -z "$unbound_pvcs" ] && [ -z "$unbound_pvs" ]; then
+        echo "    (nothing to delete)"
+        echo "==> Done."
+        exit 0
+    fi
     echo ""
     read -r -p "Delete all of the above? [y/N] " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
