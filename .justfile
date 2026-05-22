@@ -297,7 +297,7 @@ failing ns='':
             .metadata.namespace,
             .metadata.name,
             .status.phase,
-            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // "",
+            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // "-",
             ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].lastTransitionTime) // (.metadata.creationTimestamp // "-")
           ]
       )
@@ -318,7 +318,7 @@ pending ns='':
             .metadata.name,
             ($conds | map(select(.type=="PodScheduled")) | .[0].reason) // "unknown",
             (.metadata.creationTimestamp // "-"),
-            ($conds | map(select(.type=="PodScheduled")) | .[0].message) // ""
+            ($conds | map(select(.type=="PodScheduled")) | .[0].message) // "-"
           ]
       )
       | @tsv
@@ -338,7 +338,7 @@ restarts ns='':
         | [$ns, $pod, .name, (.restartCount|tostring), (.lastState.terminated.finishedAt // "-")]
       )
       | @tsv
-    ' | column -t | (read -r header; echo "$header"; sort -k4 -rn)
+    ' | column -t | (read -r header; echo "$header"; sort -k4 -n)
 
 # install: go install github.com/zegl/kube-score/cmd/kube-score@latest
 # audit cluster resources with kube-score
