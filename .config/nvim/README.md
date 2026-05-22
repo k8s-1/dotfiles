@@ -111,13 +111,11 @@ vi"p
 vi""2p
 
 ### Multi-File Search/Replace
-:vimgrep /Neovim/gj **/*
-:vimgrep /Neovim/gj **/*.vim
 
-g: Add all matches in a line to the quickfix list.
-j: Do not jump the cursor to the location of first pattern match.
+:vimgrep /search_string/gj **/*
+:vimgrep /search_string/gj **/*yaml
 
-
+:cfdo %s/search_string/replace_string/g
 
 ## Themes
 ### Currently supported plugin :colorscheme
