@@ -79,6 +79,7 @@ $ "
 export PATH=$PATH:/usr/local/go/bin
 export PATH=$PATH:"$HOME"/go/bin
 export PATH=$PATH:"$HOME"/.cargo/bin
+export PATH="$HOME/.bun/bin:$PATH"
 
 # ENV
 [ -f "$HOME/.config/sops/age/keys.txt" ] && export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
@@ -100,6 +101,9 @@ alias gps='git push'
 alias gpl='git pull'
 
 alias tf=terraform
+
+alias f="bash ~/scripts/repofinder.sh"
+
 
 if command -v just &>/dev/null; then
     alias j=just
@@ -123,10 +127,10 @@ if command -v kubectl &>/dev/null; then
   complete -o default -F __start_kubectl k
 
   kx() {
-    local context
-    context=$(kubectl config get-contexts -o name | fzf)
-    if [ -n "$context" ]; then
-      kubectl config use-context "$context"
+    local ctx
+    ctx=$(kubectl config get-contexts -o name | fzf)
+    if [ -n "$ctx" ]; then
+      kubectl config use-context "$ctx"
     fi
   }
 
@@ -153,8 +157,6 @@ EOF
   kubectl cluster-info --context kind-kind
 }
 
-alias f="bash ~/scripts/repofinder.sh"
-
 export dry="--dry-run=client -o yaml"
 
 # JIRA CLI
@@ -166,13 +168,7 @@ if command -v jira &>/dev/null; then
   }
 fi
 
-if grep -qi microsoft /proc/version 2>/dev/null; then
-  export BROWSER="wslview"
-fi
-
 export EDITOR=nvim
-
-export PATH="$HOME/.bun/bin:$PATH"
 
 # fzf keybindings: Ctrl+R history, Ctrl+T insert file path, Alt+C cd, **<Tab> fuzzy complete
 command -v fzf &>/dev/null && eval "$(fzf --bash)"
