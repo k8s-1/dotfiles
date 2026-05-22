@@ -488,12 +488,8 @@ clean-cluster days='30':
     used=$(jq -n --argjson a "$used" --argjson b "$cronjob_used" '$a + $b | unique')
     echo "    PVCs in use: $(echo "$used" | jq 'length')"
     echo "    StatefulSet volumeClaimTemplate prefixes: $(echo "$sts_prefixes" | jq 'length')"
-    echo "==> [3/4] Deleting orphaned bound PVCs older than {{days}} days (skipping keep-pvc=true)..."
-    while IFS=$'\t' read -r ns name; do
-        echo "    pvc $ns/$name"
-        kubectl delete pvc -n "$ns" "$name" --wait=false
-        sleep 0.05
-    done < <(kubectl get pvc -A -o json | jq -r --argjson used "$used" --argjson prefixes "$sts_prefixes" --argjson min_age "$min_age" '
+    echo "==> [3/4] PVCs to delete (older than {{days}} days)..."
+    bound_pvcs=$(kubectl get pvc -A -o json | jq -r --argjson used "$used" --argjson prefixes "$sts_prefixes" --argjson min_age "$min_age" '
       .items[] |
       (.metadata.namespace + "/" + .metadata.name) as $key |
       select(
@@ -505,12 +501,7 @@ clean-cluster days='30':
       ) |
       [.metadata.namespace, .metadata.name] | @tsv
     ')
-    echo "    Deleting unbound PVCs older than {{days}} days..."
-    while IFS=$'\t' read -r ns name; do
-        echo "    pvc $ns/$name (unbound)"
-        kubectl delete pvc -n "$ns" "$name" --wait=false
-        sleep 0.05
-    done < <(kubectl get pvc -A -o json | jq -r --argjson min_age "$min_age" '
+    unbound_pvcs=$(kubectl get pvc -A -o json | jq -r --argjson min_age "$min_age" '
       .items[] |
       select(
         .status.phase != "Bound" and
@@ -518,12 +509,7 @@ clean-cluster days='30':
       ) |
       [.metadata.namespace, .metadata.name] | @tsv
     ')
-    echo "==> [4/4] Deleting unbound PVs older than {{days}} days..."
-    while read -r name; do
-        echo "    pv $name"
-        kubectl delete pv "$name" --wait=false
-        sleep 0.05
-    done < <(kubectl get pv -o json | jq -r --argjson min_age "$min_age" '
+    unbound_pvs=$(kubectl get pv -o json | jq -r --argjson min_age "$min_age" '
       .items[] |
       select(
         .status.phase != "Bound" and
@@ -531,5 +517,28 @@ clean-cluster days='30':
       ) |
       .metadata.name
     ')
+    [ -n "$bound_pvcs" ]   && echo "$bound_pvcs"  | awk -F'\t' '{print "    pvc (bound)   " $1 "/" $2}' || echo "    (none)"
+    [ -n "$unbound_pvcs" ] && echo "$unbound_pvcs" | awk -F'\t' '{print "    pvc (unbound) " $1 "/" $2}'
+    echo "==> [4/4] PVs to delete..."
+    [ -n "$unbound_pvs" ] && echo "$unbound_pvs" | awk '{print "    pv " $1}' || echo "    (none)"
+    echo ""
+    read -r -p "Delete all of the above? [y/N] " confirm
+    [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+    echo "Deleting..."
+    while IFS=$'\t' read -r ns name; do
+        echo "    pvc $ns/$name"
+        kubectl delete pvc -n "$ns" "$name" --wait=false
+        sleep 0.05
+    done <<< "$bound_pvcs"
+    while IFS=$'\t' read -r ns name; do
+        echo "    pvc $ns/$name (unbound)"
+        kubectl delete pvc -n "$ns" "$name" --wait=false
+        sleep 0.05
+    done <<< "$unbound_pvcs"
+    while read -r name; do
+        echo "    pv $name"
+        kubectl delete pv "$name" --wait=false
+        sleep 0.05
+    done <<< "$unbound_pvs"
     echo "==> Done."
 
