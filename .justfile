@@ -447,41 +447,89 @@ argo-resume-all:
 clean-cluster days='30':
     #!/bin/bash
     min_age=$(( {{days}} * 86400 ))
-    kubectl get pods -A -o json | jq -r --argjson min_age "$min_age" '
+    echo "==> [1/4] Deleting completed/failed pods older than {{days}} days..."
+    while IFS=$'\t' read -r ns name; do
+        echo "    pod $ns/$name"
+        kubectl delete pod -n "$ns" "$name" --wait=false
+        sleep 0.05
+    done < <(kubectl get pods -A -o json | jq -r --argjson min_age "$min_age" '
       .items[] |
       select(
         (.status.phase == "Failed" or .status.phase == "Succeeded") and
         (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
       ) |
       [.metadata.namespace, .metadata.name] | @tsv
-    ' | xargs -r -L1 kubectl delete pod -n
-    used=$(kubectl get pods -A -o json | jq '[
-      .items[] | .metadata.namespace + "/" + (.spec.volumes[]? | .persistentVolumeClaim?.claimName // empty)
+    ')
+    echo "==> [2/4] Building PVC usage map from all workloads..."
+    used=$(kubectl get pods,statefulsets,deployments,daemonsets,jobs -A -o json | jq '[
+      .items[] |
+      (.metadata.namespace) as $ns |
+      (
+        .spec.volumes[]?,
+        .spec.template.spec.volumes[]?
+      ) |
+      .persistentVolumeClaim?.claimName // empty |
+      $ns + "/" + .
     ] | unique')
-    kubectl get pvc -A -o json | jq -r --argjson used "$used" --argjson min_age "$min_age" '
+    cronjob_used=$(kubectl get cronjobs -A -o json | jq '[
+      .items[] |
+      (.metadata.namespace) as $ns |
+      .spec.jobTemplate.spec.template.spec.volumes[]? |
+      .persistentVolumeClaim?.claimName // empty |
+      $ns + "/" + .
+    ] | unique')
+    sts_prefixes=$(kubectl get statefulsets -A -o json | jq '[
+      .items[] |
+      (.metadata.namespace) as $ns |
+      (.metadata.name) as $sts |
+      .spec.volumeClaimTemplates[]?.metadata.name |
+      $ns + "/" + . + "-" + $sts + "-"
+    ]')
+    used=$(jq -n --argjson a "$used" --argjson b "$cronjob_used" '$a + $b | unique')
+    echo "    PVCs in use: $(echo "$used" | jq 'length')"
+    echo "    StatefulSet volumeClaimTemplate prefixes: $(echo "$sts_prefixes" | jq 'length')"
+    echo "==> [3/4] Deleting orphaned bound PVCs older than {{days}} days (skipping keep-pvc=true)..."
+    while IFS=$'\t' read -r ns name; do
+        echo "    pvc $ns/$name"
+        kubectl delete pvc -n "$ns" "$name" --wait=false
+        sleep 0.05
+    done < <(kubectl get pvc -A -o json | jq -r --argjson used "$used" --argjson prefixes "$sts_prefixes" --argjson min_age "$min_age" '
       .items[] |
       (.metadata.namespace + "/" + .metadata.name) as $key |
       select(
         .status.phase == "Bound" and
         ($used | index($key) == null) and
+        ($prefixes | map($key | startswith(.)) | any | not) and
+        (.metadata.annotations["keep-pvc"] // "" | . != "true") and
         (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
       ) |
       [.metadata.namespace, .metadata.name] | @tsv
-    ' | xargs -r -L1 kubectl delete pvc -n
-    kubectl get pvc -A -o json | jq -r --argjson min_age "$min_age" '
+    ')
+    echo "    Deleting unbound PVCs older than {{days}} days..."
+    while IFS=$'\t' read -r ns name; do
+        echo "    pvc $ns/$name (unbound)"
+        kubectl delete pvc -n "$ns" "$name" --wait=false
+        sleep 0.05
+    done < <(kubectl get pvc -A -o json | jq -r --argjson min_age "$min_age" '
       .items[] |
       select(
         .status.phase != "Bound" and
         (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
       ) |
       [.metadata.namespace, .metadata.name] | @tsv
-    ' | xargs -r -L1 kubectl delete pvc -n
-    kubectl get pv -o json | jq -r --argjson min_age "$min_age" '
+    ')
+    echo "==> [4/4] Deleting unbound PVs older than {{days}} days..."
+    while read -r name; do
+        echo "    pv $name"
+        kubectl delete pv "$name" --wait=false
+        sleep 0.05
+    done < <(kubectl get pv -o json | jq -r --argjson min_age "$min_age" '
       .items[] |
       select(
         .status.phase != "Bound" and
         (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
       ) |
       .metadata.name
-    ' | xargs -r kubectl delete pv
+    ')
+    echo "==> Done."
 
