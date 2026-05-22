@@ -361,18 +361,16 @@ audit ns='':
 argo-admin:
     @kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 
-# login to argocd (port-forwards argocd-server, logs in, then you can use other argo-* recipes)
+# login to argocd
 argo-login:
     #!/bin/bash
     password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-    echo "Port-forwarding argocd-server to localhost:8080..."
-    kubectl port-forward svc/argocd-server -n argocd 8080:443 &>/dev/null &
-    pf_pid=$!
-    for i in $(seq 1 50); do curl -sk https://localhost:8080/healthz >/dev/null 2&>1 && break; sleep 0.5; done
-    sleep 2
-    argocd login localhost:8080 --username admin --password "$password" --insecure
-    kill $pf_pid 2>/dev/null
+    host=$(kubectl get httproute -n argocd -o jsonpath='{items[0].spec.hostnames[0]}' 2>/dev/null)
     echo "Logged in. Run just argo-* recipes now."
+
+# list argocd apps
+argo-list:
+  argocd app list --grpc-web -o json | jq -r(["NAME","STATUS","HEALTH","LAST-SYNCED","SYNC-POLICY"]), (sort_by([{"Healthy":0,"Progressing":1,"Suspended":2,"Unknown":3,"Missing":4,"Degraded":5}[.status.health.status] // 9, .status.sync.status]) | .[] | [.metadata.name, .status.sync.status, .status.health.status, (.status.operationState.finishedAt // "-"), (if .spec.syncPolicy.automated then "Auto" else "Manual" end)]) | @tsv' | column -t
 
 # delete an argocd app
 argo-delete:
