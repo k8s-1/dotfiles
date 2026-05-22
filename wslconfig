@@ -1,0 +1,6 @@
+# Copy this file to C:\Users\<username>\.wslconfig on the Windows host
+
+[wsl2]
+memory=8GB
+swap=8GB
+processors=12
