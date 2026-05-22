@@ -289,15 +289,18 @@ secrets ns='':
 failing ns='':
     #!/bin/bash
     kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-      ["NAMESPACE","POD","STATUS","REASON","FAILING-SINCE"],
+      ["NAMESPACE","POD","REASON","FAILING-SINCE"],
       (
         .items[]
         | select(.status.phase != "Running" and .status.phase != "Succeeded")
         | [
             .metadata.namespace,
             .metadata.name,
-            .status.phase,
-            ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].reason) // "-",
+            (
+              (.status.containerStatuses // [] | map(.state.terminated.reason // .state.waiting.reason // empty) | first) //
+              .status.reason //
+              "-"
+            ),
             ((.status.conditions // []) | map(select(.type=="Ready")) | .[0].lastTransitionTime) // (.metadata.creationTimestamp // "-")
           ]
       )
@@ -339,6 +342,48 @@ restarts ns='':
       )
       | @tsv
     ' | column -t | (read -r header; echo "$header"; sort -k4 -n)
+
+# delete evicted/error/completed pods and unbound PVCs/PVs older than N days (default: 30)
+cluster-clean days='30':
+    #!/bin/bash
+    min_age=$(( {{days}} * 86400 ))
+    kubectl get pods -A -o json | jq -r --argjson min_age "$min_age" '
+      .items[] |
+      select(
+        (.status.phase == "Failed" or .status.phase == "Succeeded") and
+        (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
+      ) |
+      [.metadata.namespace, .metadata.name] | @tsv
+    ' | xargs -r -L1 kubectl delete pod -n
+    used=$(kubectl get pods -A -o json | jq '[
+      .items[] | .metadata.namespace + "/" + (.spec.volumes[]? | .persistentVolumeClaim?.claimName // empty)
+    ] | unique')
+    kubectl get pvc -A -o json | jq -r --argjson used "$used" --argjson min_age "$min_age" '
+      .items[] |
+      (.metadata.namespace + "/" + .metadata.name) as $key |
+      select(
+        .status.phase == "Bound" and
+        ($used | index($key) == null) and
+        (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
+      ) |
+      [.metadata.namespace, .metadata.name] | @tsv
+    ' | xargs -r -L1 kubectl delete pvc -n
+    kubectl get pvc -A -o json | jq -r --argjson min_age "$min_age" '
+      .items[] |
+      select(
+        .status.phase != "Bound" and
+        (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
+      ) |
+      [.metadata.namespace, .metadata.name] | @tsv
+    ' | xargs -r -L1 kubectl delete pvc -n
+    kubectl get pv -o json | jq -r --argjson min_age "$min_age" '
+      .items[] |
+      select(
+        .status.phase != "Bound" and
+        (now - (.metadata.creationTimestamp | fromdateiso8601)) > $min_age
+      ) |
+      .metadata.name
+    ' | xargs -r kubectl delete pv
 
 # install: go install github.com/zegl/kube-score/cmd/kube-score@latest
 # audit cluster resources with kube-score
