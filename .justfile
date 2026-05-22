@@ -5,12 +5,20 @@ default:
 # get + top nodes with last ready time
 nodes:
     #!/bin/bash
-    echo "kubectl get nodes -o json | jq | column -t"
-    kubectl get nodes -o json \
-        | jq -r '["NAME","STATUS","VERSION","LAST-READY"],(.items[]|(.status.conditions[]|select(.type=="Ready")) as $ready|[.metadata.name,(if $ready.status=="True" then "Ready" else "NotReady" end),.status.nodeInfo.kubeletVersion,$ready.lastTransitionTime])|@tsv' \
-        | column -t
-    echo
-    kubectl top nodes
+    node_data=$(kubectl get nodes -o json \
+        | jq -r '.items[] | (.status.conditions[] | select(.type=="Ready")) as $ready | [.metadata.name, (if $ready.status=="True" then "Ready" else "NotReady" end), .status.nodeInfo.kubeletVersion, $ready.lastTransitionTime] | @tsv')
+    top_data=$(kubectl top nodes --no-headers)
+    (
+        echo -e "NAME\tSTATUS\tVERSION\tLAST-READY\tCPU\tCPU%\tMEM\tMEM%"
+        while IFS=$'\t' read -r name status version last_ready; do
+            top_line=$(grep "^$name " <<< "$top_data")
+            cpu=$(awk '{print $2}' <<< "$top_line")
+            cpu_pct=$(awk '{print $3}' <<< "$top_line")
+            mem=$(awk '{print $4}' <<< "$top_line")
+            mem_pct=$(awk '{print $5}' <<< "$top_line")
+            echo -e "$name\t$status\t$version\t$last_ready\t${cpu:--}\t${cpu_pct:--}\t${mem:--}\t${mem_pct:--}"
+        done <<< "$node_data"
+    ) | column -t
 
 # cluster events sorted by time (kyverno=true to include kyverno events, n=0 for all)
 events ns='' kyverno='false' n='10':
