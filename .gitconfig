@@ -1,5 +1,24 @@
 [user]
 	email = 176627561+k8s-1@users.noreply.github.com
 	name = k8s-1
+	# signingkey = <KEY_ID>
 [pull]
 	rebase = true
+[commit]
+	gpgsign = false
+[tag]
+	gpgsign = false
+# HOW TO CREATE A GPG SIGNING KEY:
+#
+#   1. gpg --full-generate-key
+#        (RSA, 4096 bits, no expiry, use same email as user.email above)
+#
+#   2. Get the <KEY_ID>
+#        gpg --list-secret-keys
+#        (copy the 16-char hex ID)
+#
+#   3. git config --global user.signingkey <KEY_ID>
+#
+#   4. Export public key to GitHub/GitLab:
+#        gpg --armor --export <KEY_ID>
+#        (paste into GitHub → Settings → SSH and GPG keys → New GPG key)
