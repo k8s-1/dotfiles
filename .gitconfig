@@ -1,13 +1,13 @@
 [user]
 	email = 176627561+k8s-1@users.noreply.github.com
 	name = k8s-1
-	# signingkey = <KEY_ID>
+	signingkey = 2A5E9DC0837BF039D5200AFA2EFC6DC2CB5B145E
 [pull]
 	rebase = true
 [commit]
-	gpgsign = false
+	gpgsign = true
 [tag]
-	gpgsign = false
+	gpgsign = true
 # HOW TO CREATE A GPG SIGNING KEY:
 #
 #   1. gpg --full-generate-key
