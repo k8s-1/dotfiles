@@ -19,11 +19,13 @@ nodes:
     @echo
     kubectl top nodes
 
-# cluster events sorted by time
-events ns='':
-    kubectl get events {{ if ns != '' { '-n ' + ns } else { '-A' } }} --sort-by='.lastTimestamp' \
-    --field-selector type=Warning \
-    -o custom-columns='TIME:.lastTimestamp,NS:.metadata.namespace,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.name,MSG:.message'
+# cluster events sorted by time (kyverno=true to include kyverno events, n=0 for all)
+events ns='' kyverno='false' n='20':
+    kubectl get events {{ if ns != '' { '-n ' + ns } else { '-A' } }} \
+    --field-selector type=Warning -o json \
+    | jq -r --argjson kyverno {{kyverno}} --argjson n {{n}} \
+    '[.items[] | select($kyverno or .metadata.namespace != "kyverno")] | sort_by(.lastTimestamp) | if $n > 0 then .[-$n:] else . end | .[] | [.lastTimestamp,.metadata.namespace,.type,.reason,.involvedObject.name,.message] | @tsv' \
+    | column -t
 
 # pending, failing and restarting pods
 issues ns='':
