@@ -368,7 +368,7 @@ argo-login:
     echo "Port-forwarding argocd-server to localhost:8080..."
     kubectl port-forward svc/argocd-server -n argocd 8080:443 &>/dev/null &
     pf_pid=$!
-    for i in $(seq 1 50); do nc -z localhost 8080 2>/dev/null && break; sleep 0.5; done
+    for i in $(seq 1 50); do curl -sk https://localhost:8080/healthz >/dev/null 2&>1 && break; sleep 0.5; done
     sleep 2
     argocd login localhost:8080 --username admin --password "$password" --insecure
     kill $pf_pid 2>/dev/null
