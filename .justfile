@@ -4,19 +4,12 @@ default:
 
 # get + top nodes with last ready time
 nodes:
-    kubectl get nodes -o json | jq -r '
-    ["NAME","STATUS","VERSION","LAST-READY"],
-    (.items[] |
-    (.status.conditions[] | select(.type=="Ready")) as $ready |
-    [
-    .metadata.name,
-    (if $ready.status == "True" then "Ready" else "NotReady" end),
-    .status.nodeInfo.kubeletVersion,
-    $ready.lastTransitionTime
-    ]
-    ) | @tsv
-    ' | column -t
-    @echo
+    #!/bin/bash
+    echo "kubectl get nodes -o json | jq | column -t"
+    kubectl get nodes -o json \
+        | jq -r '["NAME","STATUS","VERSION","LAST-READY"],(.items[]|(.status.conditions[]|select(.type=="Ready")) as $ready|[.metadata.name,(if $ready.status=="True" then "Ready" else "NotReady" end),.status.nodeInfo.kubeletVersion,$ready.lastTransitionTime])|@tsv' \
+        | column -t
+    echo
     kubectl top nodes
 
 # cluster events sorted by time (kyverno=true to include kyverno events, n=0 for all)
@@ -36,21 +29,11 @@ issues ns='':
 
 # get pods with last ready time
 pods ns='':
-    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-    ["NAMESPACE","POD","STATUS","RESTARTS","READY-SINCE","NODE"],
-    (.items[] |
-    (.status.conditions[]? | select(.type=="Ready")) as $ready |
-    (.status.containerStatuses // [] | map(.restartCount) | add // 0) as $restarts |
-    [
-    .metadata.namespace,
-    .metadata.name,
-    .status.phase,
-    ($restarts | tostring),
-    ($ready.lastTransitionTime // "-"),
-    (.spec.nodeName // "-")
-    ]
-    ) | @tsv
-    ' | column -t
+    #!/bin/bash
+    echo "kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq | column -t"
+    kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json \
+        | jq -r '["NAMESPACE","POD","STATUS","RESTARTS","READY-SINCE","NODE"],(.items[]|(.status.conditions[]?|select(.type=="Ready")) as $ready|(.status.containerStatuses//[]|map(.restartCount)|add//0) as $restarts|[.metadata.namespace,.metadata.name,.status.phase,($restarts|tostring),($ready.lastTransitionTime//"-"),(.spec.nodeName//"-")])|@tsv' \
+        | column -t
 
 # describe pods
 describe ns='':
@@ -258,18 +241,11 @@ top ns='':
 
 # VPA resource recommendations (target CPU/memory per container)
 vpa ns='':
-    kubectl get vpa {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
-    ["NAMESPACE","VPA","CONTAINER","TARGET-CPU","TARGET-MEM","MIN-CPU","MIN-MEM","MAX-CPU","MAX-MEM"],
-    (.items[] |
-    .metadata.namespace as $ns |
-    .metadata.name as $name |
-    (.status.recommendation.containerRecommendations // [] | .[] |
-    [$ns, $name, .containerName,
-    (.target.cpu // "-"), (.target.memory // "-"),
-    (.lowerBound.cpu // "-"), (.lowerBound.memory // "-"),
-    (.upperBound.cpu // "-"), (.upperBound.memory // "-")
-    ])) | @tsv
-    ' | column -t
+    #!/bin/bash
+    echo "kubectl get vpa {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq | column -t"
+    kubectl get vpa {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json \
+        | jq -r '["NAMESPACE","VPA","CONTAINER","TARGET-CPU","TARGET-MEM","MIN-CPU","MIN-MEM","MAX-CPU","MAX-MEM"],(.items[]|.metadata.namespace as $ns|.metadata.name as $name|(.status.recommendation.containerRecommendations//[]|.[]|[$ns,$name,.containerName,(.target.cpu//"-"),(.target.memory//"-"),(.lowerBound.cpu//"-"),(.lowerBound.memory//"-"),(.upperBound.cpu//"-"),(.upperBound.memory//"-")]))|@tsv' \
+        | column -t
 
 # port-forward a service
 forward ns='':
