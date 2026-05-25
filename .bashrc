@@ -67,7 +67,7 @@ function parse_git_info {
 
 kcontext() {
   local current_context
-  current_context="${KUBE_CURRENT_CONTEXT:-$(timeout 0.1 kubectl config current-context 2>/dev/null)}"
+  current_context="${KUBE_CURRENT_CONTEXT:-$(grep '^current-context:' "${KUBECONFIG:-$HOME/.kube/config}" 2>/dev/null | awk '{print $2}')}"
   [[ -n "$current_context" ]]  && echo "(☸ $current_context)"
 }
 
