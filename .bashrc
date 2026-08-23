@@ -101,6 +101,8 @@ alias gl='git log --oneline --graph --format="%C(yellow)%h%C(reset) %C(cyan)%an%
 alias gps='git push'
 alias gpl='git pull'
 
+alias py='python3'
+
 alias tf=terraform
 
 alias f="bash ~/scripts/repofinder.sh"
