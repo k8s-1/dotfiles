@@ -1,5 +1,9 @@
 return {
   'akinsho/toggleterm.nvim',
+  cmd = { "ToggleTerm", "TermExec" },
+  keys = {
+    { [[<c-\>]], desc = "Toggle terminal" },
+  },
   config = function()
     require("toggleterm").setup {
       direction = 'horizontal',

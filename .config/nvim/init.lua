@@ -1,3 +1,5 @@
+vim.loader.enable()
+
 vim.env.PATH = "/usr/bin:" .. vim.env.PATH
 
 require("config.keymaps")
@@ -20,7 +22,15 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 -- lazy load ./lua/plugins/*.lua
-require("lazy").setup("plugins")
+require("lazy").setup("plugins", {
+  performance = {
+    rtp = {
+      disabled_plugins = {
+        "gzip", "tarPlugin", "tohtml", "tutor", "zipPlugin", "netrwPlugin",
+      },
+    },
+  },
+})
 
 
 -- LSP

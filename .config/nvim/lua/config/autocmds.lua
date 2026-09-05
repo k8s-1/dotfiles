@@ -36,6 +36,18 @@ if is_wsl() then
   })
 end
 
+-- open Oil when starting nvim on a directory (e.g. `nvim .`)
+-- use :oldfiles to see previously worked on files
+vim.api.nvim_create_autocmd("VimEnter", {
+  callback = function(args)
+    if vim.fn.isdirectory(args.file) == 0 then
+      return
+    end
+    vim.cmd.cd(args.file)
+    vim.cmd.Oil(args.file)
+  end,
+})
+
 -- " Use tabs for Go files (4 spaces wide)
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "go",

@@ -14,17 +14,15 @@ return {
       })
     end,
   },
-  -- snippet engine and sources
-  {
-    "L3MON4D3/LuaSnip",              -- snippet engine
-    dependencies = {
-      "saadparwaiz1/cmp_luasnip",    -- auto-completion feature for nvim-cmp
-      "rafamadriz/friendly-snippets" -- contains snippets
-    },
-  },
-  -- auto-completion window
+  -- auto-completion window (snippet engine + sources are loaded as its dependencies)
   {
     "hrsh7th/nvim-cmp",
+    event = "InsertEnter",
+    dependencies = {
+      "L3MON4D3/LuaSnip",              -- snippet engine
+      "saadparwaiz1/cmp_luasnip",      -- auto-completion feature for nvim-cmp
+      "rafamadriz/friendly-snippets",  -- contains snippets
+    },
     config = function()
       local cmp = require("cmp")
       local luasnip = require("luasnip")

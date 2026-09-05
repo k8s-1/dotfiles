@@ -1,5 +1,6 @@
 -- pick one scheme as the default, loaded by vim.cmd.colorscheme at start with
 -- high priority, the rest can be lazyloaded
+-- :colorscheme <name>
 return {
   {
     "catppuccin/nvim",
@@ -11,26 +12,6 @@ return {
       vim.cmd.colorscheme "catppuccin-mocha"
       -- vim.cmd.colorscheme "catppuccin-macchiato"
     end,
-  },
-  {
-    "ellisonleao/gruvbox.nvim",
-    name = "gruvbox",
-    lazy = true,
-    -- priority = 1000,
-    config = function()
-      require("gruvbox").setup({})
-      -- vim.cmd.colorscheme "gruvbox"
-    end,
-  },
-  {
-    'sainnhe/everforest',
-    lazy = true,
-    -- priority = 1000,
-  },
-  {
-    'sainnhe/gruvbox-material',
-    lazy = true,
-    -- priority = 1000,
   },
   {
     "nyoom-engineering/oxocarbon.nvim",

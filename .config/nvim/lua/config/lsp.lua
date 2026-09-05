@@ -30,6 +30,6 @@ vim.diagnostic.config({
   virtual_lines = false,   -- Enable virtual lines for diagnostics
   signs = true,            -- Show signs in the gutter
   underline = true,        -- Underline problematic text
-  update_in_insert = true, -- Update diagnostics in insert mode
+  update_in_insert = false, -- Don't recompute diagnostics on every keystroke in insert mode
   severity_sort = false,   -- Do not sort by severity (show all diagnostics)
 })

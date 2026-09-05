@@ -1,6 +1,12 @@
 return {
   "echasnovski/mini.surround",
   name = "mini-surround",
+  keys = {
+    { "sa", mode = { "n", "v" }, desc = "Add surrounding" },
+    { "sd", desc = "Delete surrounding" },
+    { "sf", desc = "Find surrounding" },
+    { "sr", desc = "Replace surrounding" },
+  },
   config = function()
     require('mini.surround').setup({ -- Module mappings. Use `''` (empty string) to disable one.
       mappings = {

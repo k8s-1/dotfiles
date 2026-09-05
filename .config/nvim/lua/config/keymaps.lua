@@ -166,6 +166,32 @@ vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Go to next [D]iagn
 vim.keymap.set("n", "<leader>m", vim.diagnostic.open_float, { desc = "Show diagnostic [E]rror messages", noremap = true })
 vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagnostic [Q]uickfix list", noremap = true })
 
+-- Add and commit all changes with an auto-generated message
+local function git_add_and_commit()
+  vim.system({ "git", "diff", "--name-only" }, { text = true }, function(diff)
+    local commit_message = "chore: update file(s):"
+    for filename in (diff.stdout or ""):gmatch("[^\r\n]+") do
+      commit_message = commit_message .. " " .. filename
+    end
+
+    vim.system({ "git", "add", "-A" }, {}, function()
+      vim.system({ "git", "commit", "-m", commit_message }, {}, function(res)
+        vim.schedule(function()
+          if res.code == 0 then
+            print("commit added!")
+          else
+            print("commit failed: " .. (res.stderr or ""))
+          end
+        end)
+      end)
+    end)
+  end)
+end
+vim.keymap.set('n', '<leader>gg', git_add_and_commit, { noremap = true })
+
+-- Open URL/file under cursor in the browser (netrwPlugin, which provided this, is disabled)
+vim.keymap.set("n", "gx", function() vim.ui.open(vim.fn.expand("<cfile>")) end, { desc = "Open file/URL under cursor", noremap = true })
+
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
 -- is not what someone will guess without a bit more experience.

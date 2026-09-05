@@ -1,5 +1,10 @@
 return {
   "stevearc/oil.nvim",
+  cmd = "Oil",
+  keys = {
+    -- MAIN KEYMAP TO OPEN OIL
+    { "-", "<cmd>Oil<CR>", desc = "Open parent directory" },
+  },
   config = function()
     require("oil").setup({
       columns = {
@@ -22,8 +27,5 @@ return {
       },
       skip_confirm_for_simple_edits = true,
     })
-
-    -- MAIN KEYMAP TO OPEN OIL
-    vim.keymap.set("n", "-", vim.cmd.Oil)
   end,
 }
