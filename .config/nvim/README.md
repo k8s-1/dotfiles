@@ -112,10 +112,16 @@ vi""2p
 
 ### Multi-File Search/Replace
 
+1. populate quickfix list
 :vimgrep /search_string/gj **/*
 :vimgrep /search_string/gj **/*yaml
 
+2. verify quickfix list
+:copen
+
+3. replace
 :cfdo %s/search_string/replace_string/g
+:cfdo %s/search_string/replace_string/gc
 
 ## Themes
 ### Currently supported plugin :colorscheme
