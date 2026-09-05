@@ -5,8 +5,10 @@ default:
 # get + top nodes with last ready time
 nodes:
     #!/bin/bash
+    echo "kubectl get nodes -o json | jq ... (name, ready status, version, last-ready time)"
     node_data=$(kubectl get nodes -o json \
         | jq -r '.items[] | (.status.conditions[] | select(.type=="Ready")) as $ready | [.metadata.name, (if $ready.status=="True" then "Ready" else "NotReady" end), .status.nodeInfo.kubeletVersion, $ready.lastTransitionTime] | @tsv')
+    echo "kubectl top nodes --no-headers"
     top_data=$(kubectl top nodes --no-headers)
     (
         echo -e "NAME\tSTATUS\tVERSION\tLAST-READY\tCPU\tCPU%\tMEM\tMEM%"
@@ -94,6 +96,7 @@ logs ns='':
 pvc ns='':
     #!/bin/bash
     declare -A mount_map
+    echo "kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq ... (build pod->pvc mount map)"
     pod_mounts=$(kubectl get pods {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
       .items[] | select(.status.phase=="Running") |
       .metadata.namespace as $ns | .metadata.name as $pod |
@@ -105,6 +108,7 @@ pvc ns='':
     while IFS=$'\t' read -r mns mpvc mpod mmount; do
         mount_map["$mns/$mpvc"]="$mpod:$mmount"
     done <<< "$pod_mounts"
+    echo "kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq | column -t"
     pvc_list=$(kubectl get pvc {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq -r '
       .items[] | [.metadata.namespace, .metadata.name, .status.phase, (.status.capacity.storage // "-"), (.spec.accessModes[0] // "-"), (.spec.storageClassName // "-")] | @tsv
     ')
@@ -134,6 +138,7 @@ pvc-migrate:
     read -p "New size (e.g. 10Gi): " new_size
     [ -z "$new_size" ] && exit 0
     new_pvc="${pvc}-migrate"
+    echo "kubectl apply -f - (new PVC $new_pvc, size $new_size)"
     jq -n \
         --arg name "$new_pvc" --arg ns "$ns" \
         --arg mode "$access_mode" --arg sc "$storage_class" --arg size "$new_size" \
@@ -147,6 +152,7 @@ pvc-migrate:
             resources: {requests: {storage: $size}}
           }
         }' | kubectl apply -f -
+    echo "kubectl apply -f - (temp pod pvc-migrate-temp mounting both PVCs)"
     jq -n \
         --arg ns "$ns" --arg pvc "$pvc" --arg new_pvc "$new_pvc" \
         '{
@@ -173,7 +179,9 @@ pvc-migrate:
     echo "Waiting for migration pod..."
     kubectl wait pod/pvc-migrate-temp -n "$ns" --for=condition=Ready --timeout=120s
     echo "Copying data from $pvc to $new_pvc..."
+    echo "kubectl exec -n $ns pvc-migrate-temp -- cp -av /source/. /dest/"
     kubectl exec -n "$ns" pvc-migrate-temp -- cp -av /source/. /dest/
+    echo "kubectl delete pod pvc-migrate-temp -n $ns"
     kubectl delete pod pvc-migrate-temp -n "$ns"
     affected=$(kubectl get deploy,statefulset,pod,job,cronjob -n "$ns" -o json 2>/dev/null | jq -r --arg pvc "$pvc" '
       .items[] | select(.spec.template.spec.volumes[]?.persistentVolumeClaim.claimName == $pvc or .spec.volumes[]?.persistentVolumeClaim.claimName == $pvc) |
@@ -226,14 +234,14 @@ netshoot ns='':
         ns="{{ns}}"
     fi
     [ -z "$ns" ] && exit 0
-    echo "kubectl run netshoot --rm -it --image=nicolaka/netshoot -n $ns -- bash"
+    echo "kubectl run netshoot --rm -it --image=nicolaka/netshoot:v0.16@sha256:b09d9b21381f47a79b3cbcb30da25266dc17186ea00ae65e99fdc51396f48e70 -n $ns -- bash"
     echo ""
     echo "useful commands:"
     echo "  dig <svc>.<ns>.svc.cluster.local"
     echo "  curl http://<svc>.<ns>.svc.cluster.local"
     echo "  ping <pod-ip>"
     echo ""
-    kubectl run netshoot --rm -it --image=nicolaka/netshoot -n "$ns" -- bash
+    kubectl run netshoot --rm -it --image=nicolaka/netshoot:v0.16@sha256:b09d9b21381f47a79b3cbcb30da25266dc17186ea00ae65e99fdc51396f48e70 -n "$ns" -- bash
 
 # get gateway,httproute
 routes ns='':
@@ -282,6 +290,7 @@ secrets ns='':
     [ -z "$ns" ] && exit 0
     secret=$(kubectl get secret -n "$ns" --no-headers | fzf --prompt="secret> " --height=40% | awk '{print $1}')
     [ -z "$secret" ] && exit 0
+    echo "kubectl get secret $secret -n $ns -o json | jq -r '.data | to_entries[] | \"\\(.key): \\(.value | @base64d)\"'"
     kubectl get secret "$secret" -n "$ns" -o json | jq -r '
       .data // {} | to_entries[] | "\(.key): \(.value | @base64d)"
     '
@@ -364,13 +373,37 @@ argo-admin:
 # login to argocd
 argo-login:
     #!/bin/bash
+    echo "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
     password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+    echo "kubectl get httproute -n argocd -o jsonpath='{items[0].spec.hostnames[0]}'"
     host=$(kubectl get httproute -n argocd -o jsonpath='{items[0].spec.hostnames[0]}' 2>/dev/null)
     echo "Logged in. Run just argo-* recipes now."
 
 # list argocd apps
 argo-list:
-  argocd app list --grpc-web -o json | jq -r(["NAME","STATUS","HEALTH","LAST-SYNCED","SYNC-POLICY"]), (sort_by([{"Healthy":0,"Progressing":1,"Suspended":2,"Unknown":3,"Missing":4,"Degraded":5}[.status.health.status] // 9, .status.sync.status]) | .[] | [.metadata.name, .status.sync.status, .status.health.status, (.status.operationState.finishedAt // "-"), (if .spec.syncPolicy.automated then "Auto" else "Manual" end)]) | @tsv' | column -t
+  argocd app list --grpc-web -o json | jq -r '["NAME","STATUS","HEALTH","LAST-SYNCED","SYNC-POLICY"], (sort_by([{"Healthy":0,"Progressing":1,"Suspended":2,"Unknown":3,"Missing":4,"Degraded":5}[.status.health.status] // 9, .status.sync.status]) | .[] | [.metadata.name, .status.sync.status, .status.health.status, (.status.operationState.finishedAt // "-"), (if .spec.syncPolicy.automated then "Auto" else "Manual" end)]) | @tsv' | column -t
+
+# show live vs git diff for an argocd app
+argo-diff app='':
+    #!/bin/bash
+    app="{{app}}"
+    if [ -z "$app" ]; then
+        app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    fi
+    [ -z "$app" ] && exit 0
+    echo "argocd app diff $app"
+    argocd app diff "$app"
+
+# hard-refresh an argocd app's cache
+argo-refresh app='':
+    #!/bin/bash
+    app="{{app}}"
+    if [ -z "$app" ]; then
+        app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    fi
+    [ -z "$app" ] && exit 0
+    echo "argocd app get $app --hard-refresh"
+    argocd app get "$app" --hard-refresh
 
 # delete an argocd app
 argo-delete:
@@ -379,20 +412,37 @@ argo-delete:
     [ -z "$app" ] && exit 0
     read -p "Delete '$app' and all its cluster resources? [y/N]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
+    echo "argocd app delete $app --cascade"
     argocd app delete "$app" --cascade
 
 # sync an argocd app
-argo-sync:
+argo-sync app='':
     #!/bin/bash
-    app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    app="{{app}}"
+    if [ -z "$app" ]; then
+        app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
+    fi
     [ -z "$app" ] && exit 0
+    echo "argocd app sync $app"
     argocd app sync "$app"
+
+# terminate an in-progress argocd sync
+argo-terminate app='':
+    #!/bin/bash
+    app="{{app}}"
+    if [ -z "$app" ]; then
+        app=$(argocd app list --grpc-web -o json | jq -r '.[] | select(.status.operationState.phase=="Running") | .metadata.name' | fzf --prompt="syncing app> " --height=40%)
+    fi
+    [ -z "$app" ] && exit 0
+    echo "argocd app terminate-op $app"
+    argocd app terminate-op "$app"
 
 # disable auto-sync for an argocd app
 argo-pause:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
     [ -z "$app" ] && exit 0
+    echo "argocd app set $app --sync-policy none"
     argocd app set "$app" --sync-policy none
     echo "Auto-sync disabled for $app"
 
@@ -401,6 +451,7 @@ argo-resume:
     #!/bin/bash
     app=$(argocd app list -o name 2>/dev/null | fzf --prompt="app> " --height=40%)
     [ -z "$app" ] && exit 0
+    echo "argocd app set $app --sync-policy automated"
     argocd app set "$app" --sync-policy automated
     echo "Auto-sync enabled for $app"
 
@@ -410,7 +461,7 @@ argo-pause-all:
     apps=$(argocd app list -o name 2>/dev/null)
     [ -z "$apps" ] && echo "no apps found" && exit 1
     while IFS= read -r app; do
-        echo "Pausing $app..."
+        echo "argocd app set $app --sync-policy none"
         argocd app set "$app" --sync-policy none
     done <<< "$apps"
     echo "All apps paused."
@@ -421,10 +472,105 @@ argo-resume-all:
     apps=$(argocd app list -o name 2>/dev/null)
     [ -z "$apps" ] && echo "no apps found" && exit 1
     while IFS= read -r app; do
-        echo "Resuming $app..."
+        echo "argocd app set $app --sync-policy automated"
         argocd app set "$app" --sync-policy automated
     done <<< "$apps"
     echo "All apps resumed."
+
+# manually trigger a job from a cronjob
+cronjob-run ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    cronjob=$(kubectl get cronjobs -n "$ns" --no-headers | fzf --prompt="cronjob> " --height=40% | awk '{print $1}')
+    [ -z "$cronjob" ] && exit 0
+    job="${cronjob}-manual-$(date +%s)"
+    echo "kubectl create job $job -n $ns --from=cronjob/$cronjob"
+    kubectl create job "$job" -n "$ns" --from=cronjob/"$cronjob"
+    kubectl logs -n "$ns" -f job/"$job"
+
+# cnpg cluster status (phase, instances, current/target primary, per-pod role)
+cnpg-status ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
+    [ -z "$cluster" ] && exit 0
+    echo "kubectl get cluster $cluster -n $ns -o json | jq '.status | {phase, instances, readyInstances, currentPrimary, targetPrimary}'"
+    kubectl get cluster "$cluster" -n "$ns" -o json | jq '.status | {phase, instances, readyInstances, currentPrimary, targetPrimary}'
+    echo ""
+    echo "kubectl get pods -n $ns -l cnpg.io/cluster=$cluster -L cnpg.io/instanceRole"
+    kubectl get pods -n "$ns" -l cnpg.io/cluster="$cluster" -L cnpg.io/instanceRole
+
+# list cnpg Backup CRs (phase, method, barman path/destination)
+cnpg-backups ns='':
+    #!/bin/bash
+    echo "kubectl get backups.postgresql.cnpg.io {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json | jq | column -t"
+    kubectl get backups.postgresql.cnpg.io {{ if ns != '' { '-n ' + ns } else { '-A' } }} -o json \
+        | jq -r '["NAMESPACE","BACKUP","CLUSTER","PHASE","METHOD","STARTED","STOPPED","DESTINATION"],(.items[]|[.metadata.namespace,.metadata.name,.spec.cluster.name,(.status.phase//"-"),(.status.method//"-"),(.status.startedAt//"-"),(.status.stoppedAt//"-"),(.status.destinationPath // (.status.pluginMetadata//{}|tostring) // "-")])|@tsv' \
+        | column -t
+
+# trigger an on-demand cnpg backup
+cnpg-backup ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
+    [ -z "$cluster" ] && exit 0
+    backup_name="${cluster}-manual-$(date +%s)"
+    echo "kubectl apply -f - (Backup $backup_name for cluster $cluster)"
+    jq -n --arg name "$backup_name" --arg ns "$ns" --arg cluster "$cluster" \
+        '{apiVersion:"postgresql.cnpg.io/v1",kind:"Backup",metadata:{name:$name,namespace:$ns},spec:{cluster:{name:$cluster}}}' \
+        | kubectl apply -f -
+    echo "kubectl get backup $backup_name -n $ns -w"
+    kubectl get backup "$backup_name" -n "$ns" -w
+
+# run this before restoring: latest recoverable point-in-time + last successful/failed backup
+cnpg-restore-check ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    else
+        ns="{{ns}}"
+    fi
+    [ -z "$ns" ] && exit 0
+    cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
+    [ -z "$cluster" ] && exit 0
+    echo "kubectl get cluster $cluster -n $ns -o json | jq '.status | {phase, firstRecoverabilityPoint, lastSuccessfulBackup, lastFailedBackup}'"
+    kubectl get cluster "$cluster" -n "$ns" -o json | jq '.status | {phase, firstRecoverabilityPoint, lastSuccessfulBackup, lastFailedBackup}'
+
+# pick a managed resource and describe it (real error is in conditions/Events)
+crossplane-describe:
+    #!/bin/bash
+    selection=$(kubectl get managed --no-headers 2>/dev/null | fzf --prompt="managed resource> " --height=40% | awk '{print $1}')
+    [ -z "$selection" ] && exit 0
+    echo "kubectl describe $selection"
+    kubectl describe "$selection"
+
+# nothing reconciling at all? tail a provider's own pod logs
+crossplane-provider-logs ns='crossplane-system':
+    #!/bin/bash
+    pod=$(kubectl get pods -n "{{ns}}" --no-headers | fzf --prompt="provider pod> " --height=40% --query="provider" | awk '{print $1}')
+    [ -z "$pod" ] && exit 0
+    echo "kubectl logs -n {{ns}} $pod --tail=200 -f"
+    kubectl logs -n "{{ns}}" "$pod" --tail=200 -f
+
+# still nothing? tail crossplane core's own logs
+crossplane-core-logs ns='crossplane-system':
+    echo "kubectl logs -n {{ns}} deploy/crossplane --tail=200 -f"
+    kubectl logs -n {{ns}} deploy/crossplane --tail=200 -f
 
 # delete evicted/error/completed pods and unbound PVCs/PVs older than N days (default: 30)
 clean-cluster days='30':
