@@ -2,6 +2,16 @@
 default:
     just --list --unsorted
 
+# pick a namespace with fzf, or pass one through unchanged
+[private]
+pick-ns ns='':
+    #!/bin/bash
+    if [ -z "{{ns}}" ]; then
+        kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%
+    else
+        echo "{{ns}}"
+    fi
+
 # get + top nodes with last ready time
 nodes:
     #!/bin/bash
@@ -68,11 +78,7 @@ exec ns='':
 # restart deployment
 rollout ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     selection=$(kubectl get deployments -n "$ns" --show-labels --no-headers | fzf --prompt="rollout restart deployment (TAB to multi-select)> " --height=40% --multi)
     [ -z "$selection" ] && exit 0
@@ -129,7 +135,7 @@ pvc ns='':
 # migrate a PVC to a new larger one
 pvc-migrate:
     #!/bin/bash
-    ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
+    ns=$(just pick-ns)
     [ -z "$ns" ] && exit 0
     pvc=$(kubectl get pvc -n "$ns" --no-headers | fzf --prompt="pvc> " --height=40% | awk '{print $1}')
     [ -z "$pvc" ] && exit 0
@@ -228,11 +234,7 @@ pvc-migrate:
 # launch network debug pod
 netshoot ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     echo "kubectl run netshoot --rm -it --image=nicolaka/netshoot:v0.16@sha256:b09d9b21381f47a79b3cbcb30da25266dc17186ea00ae65e99fdc51396f48e70 -n $ns -- bash"
     echo ""
@@ -266,11 +268,7 @@ vpa ns='':
 # port-forward a service
 forward ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     svc=$(kubectl get svc -n "$ns" --no-headers | fzf --prompt="svc> " --height=40% | awk '{print $1}')
     [ -z "$svc" ] && exit 0
@@ -282,11 +280,7 @@ forward ns='':
 # decode a secret
 secrets ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     secret=$(kubectl get secret -n "$ns" --no-headers | fzf --prompt="secret> " --height=40% | awk '{print $1}')
     [ -z "$secret" ] && exit 0
@@ -357,11 +351,7 @@ restarts ns='':
 # audit cluster resources with kube-score
 audit ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     echo "kubectl get pods,deployments,services -n $ns -o yaml | kube-score score -"
     kubectl get pods,deployments,services -n "$ns" -o yaml | kube-score score - || true
@@ -376,7 +366,10 @@ argo-login:
     echo "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
     password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
     echo "kubectl get httproute -n argocd -o jsonpath='{items[0].spec.hostnames[0]}'"
-    host=$(kubectl get httproute -n argocd -o jsonpath='{items[0].spec.hostnames[0]}' 2>/dev/null)
+    host=$(kubectl get httproute -n argocd -o jsonpath='{.items[0].spec.hostnames[0]}' 2>/dev/null)
+    [ -z "$host" ] && { echo "no argocd httproute found"; exit 1; }
+    echo "argocd login $host --username admin --password ****** --grpc-web"
+    argocd login "$host" --username admin --password "$password" --grpc-web
     echo "Logged in. Run just argo-* recipes now."
 
 # list argocd apps
@@ -480,11 +473,7 @@ argo-resume-all:
 # manually trigger a job from a cronjob
 cronjob-run ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     cronjob=$(kubectl get cronjobs -n "$ns" --no-headers | fzf --prompt="cronjob> " --height=40% | awk '{print $1}')
     [ -z "$cronjob" ] && exit 0
@@ -496,11 +485,7 @@ cronjob-run ns='':
 # cnpg cluster status (phase, instances, current/target primary, per-pod role)
 cnpg-status ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
     [ -z "$cluster" ] && exit 0
@@ -521,11 +506,7 @@ cnpg-backups ns='':
 # trigger an on-demand cnpg backup
 cnpg-backup ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
     [ -z "$cluster" ] && exit 0
@@ -540,11 +521,7 @@ cnpg-backup ns='':
 # run this before restoring: latest recoverable point-in-time + last successful/failed backup
 cnpg-restore-check ns='':
     #!/bin/bash
-    if [ -z "{{ns}}" ]; then
-        ns=$(kubectl get ns --no-headers | awk '{print $1}' | fzf --prompt="ns> " --height=40%)
-    else
-        ns="{{ns}}"
-    fi
+    ns=$(just pick-ns "{{ns}}")
     [ -z "$ns" ] && exit 0
     cluster=$(kubectl get clusters.postgresql.cnpg.io -n "$ns" --no-headers | fzf --prompt="cluster> " --height=40% | awk '{print $1}')
     [ -z "$cluster" ] && exit 0

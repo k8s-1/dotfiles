@@ -165,8 +165,10 @@ export dry="--dry-run=client -o yaml"
 
 # JIRA CLI
 if command -v jira &>/dev/null; then
+  _jc="$HOME/.cache/jira_completion.bash"
+  [ "$_jc" -ot "$(command -v jira)" ] && jira completion bash > "$_jc"
   # shellcheck source=/dev/null
-  source <(jira completion bash)
+  source "$_jc"
   jil() {
     jira issue list --assignee "$(jira me)" -s"To Do" -s"In Progress" --columns key,summary,status,updated
   }
