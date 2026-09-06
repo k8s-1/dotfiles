@@ -176,7 +176,11 @@ fi
 
 export EDITOR=nvim
 
-# fzf keybindings: Ctrl+R history, Ctrl+T insert file path, Alt+C cd, **<Tab> fuzzy complete
+# fzf keybindings:
+# Ctrl+R history
+# Ctrl+T insert file path
+# Alt+C cd
+# **<Tab> fuzzy complete
 command -v fzf &>/dev/null && eval "$(fzf --bash)"
 
 if command -v terraform &>/dev/null; then
