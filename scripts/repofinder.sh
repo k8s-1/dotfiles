@@ -5,10 +5,15 @@ set -e
 # depends on: fd, fzf
 
 ROOT_DIR="$HOME"
+CODE_DIR="$HOME/code"
 
 # match all .git dirs without a . in parent path e.g. .local/../../.git is ignored
 # dirs=$(fd '\.git$' "$ROOT_DIR" -u --prune -t d -x dirname {} | grep -v '/\..*')
 dirs=$(find "$ROOT_DIR" -maxdepth 2 -type d -name '.git' -prune -exec dirname {} \; | grep -v '/\..*')
+if [ -d "$CODE_DIR" ]; then
+  dirs="$dirs
+$(find "$CODE_DIR" -maxdepth 2 -type d -name '.git' -prune -exec dirname {} \; | grep -v '/\..*')"
+fi
 
 # fuzzy select repo
 selected_repo=$(printf "%s\n%s\n" "$dirs" \
@@ -51,5 +56,5 @@ tmux select-window -t "$SESSION_NAME:$WINDOW_NAME"
 sleep 0.1 # wait for tmux selection post-steps to finish e.g. bash_profile sourcing
 
 if [[ "$(tmux list-panes -t "$SESSION_NAME:$WINDOW_NAME" -F '#{pane_current_command}')" =~ bash|tmux ]]; then
-  tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "cd $selected_repo && git pull && nvim ." Enter
+  tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "cd $selected_repo" Enter
 fi
