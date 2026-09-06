@@ -183,32 +183,29 @@ export EDITOR=nvim
 # **<Tab> fuzzy complete
 command -v fzf &>/dev/null && eval "$(fzf --bash)"
 
-alias task-list-urgency='task list rc.report.list.sort=urgency-'
-alias task-list-due='task list rc.report.list.sort=due+'
-task-set-priority() {
-  task "$1" modify priority:"$2"
-}
-task-set-due() {
-  task "$1" modify due:"$2"
-}
-standup() {
+task-recap() {
   echo "== Done in last 7 days =="
   task end.after:'today - 7days' status:completed list
   echo
-  echo "== Up next (by due date) =="
-  task-list-due
+  echo "== Up next =="
+  task list
 }
 task-help() {
   cat <<'EOF'
+Always ask:
+- "Sure, what's the target date? That'll help me sequence it against what's already committed."
+- "Happy to take that on — what's the priority relative to [current item]? Should I pause that or can it wait?"
+- "I can fit this in, but something has to move — do you want to make that call, or should I?"
+
 task add "desc" [priority:H|M|L] [due:date]   add a task
 task list                                     list all tasks
-task-list-urgency                             list sorted by urgency
-task-list-due                                 list sorted by due date
 task <id> modify <attr>:<value>               edit a task
-task-set-priority <id> <H|M|L>                set priority
-task-set-due <id> <date>                      set due date (tomorrow, eom, +3d, YYYY-MM-DD)
+task <id> modify priority:<H|M|L>             set priority
+task <id> modify due:<date>                   set due date (tomorrow, eom, +3d, YYYY-MM-DD)
 task <id> done                                mark complete
 task <id> delete                              delete a task
+task <id> edit                                edit a task
+task calendar                                 calendar overview
 standup                                       done since yesterday + upcoming by due date
 EOF
 }
