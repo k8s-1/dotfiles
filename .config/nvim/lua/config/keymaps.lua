@@ -166,6 +166,8 @@ vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Go to next [D]iagn
 vim.keymap.set("n", "<leader>m", vim.diagnostic.open_float, { desc = "Show diagnostic [E]rror messages", noremap = true })
 vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagnostic [Q]uickfix list", noremap = true })
 
+vim.keymap.set("n", "<leader>?", function() require("fzf-lua").keymaps() end, { desc = "Search keymaps", noremap = true })
+
 -- Add and commit all changes with an auto-generated message
 local function git_add_and_commit()
   vim.system({ "git", "diff", "--name-only" }, { text = true }, function(diff)

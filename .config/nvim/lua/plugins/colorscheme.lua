@@ -19,6 +19,7 @@ return {
     priority = 1000,
 
     name = "oxocarbon",
+    build = false,
     config = function()
       vim.opt.background = "dark"
       vim.cmd.colorscheme "oxocarbon"
