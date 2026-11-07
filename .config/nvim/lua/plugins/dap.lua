@@ -6,7 +6,7 @@ return {
     "mfussenegger/nvim-dap",
     keys = {
       { "<F5>",       function() require("dap").continue() end,          desc = "DAP continue / start" },
-      { "<leader>dc", function() require("dap").continue() end,          desc = "DAP continue / start" },
+      { "<leader>dd", function() require("dap").continue() end,          desc = "DAP continue / start" },
       { "<leader>dn", function() require("dap").step_over() end,         desc = "DAP next (step over)" },
       { "<leader>di", function() require("dap").step_into() end,         desc = "DAP step in" },
       { "<leader>do", function() require("dap").step_out() end,          desc = "DAP step out" },
@@ -23,7 +23,7 @@ return {
         desc = "DAP scopes sidebar"
       },
       { "<leader>dr", function() require("dap").repl.toggle() end,                               desc = "DAP REPL" },
-      { "<leader>dC", function() require("dap").clear_breakpoints() end,                         desc = "DAP clear breakpoints" },
+      { "<leader>dc", function() require("dap").clear_breakpoints() end,                         desc = "DAP clear breakpoints" },
       { "<leader>dl", function() require("dap").run_last() end,                                  desc = "DAP run last" },
       { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input("Condition: ")) end, desc = "DAP conditional breakpoint" },
       {
