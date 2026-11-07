@@ -213,3 +213,4 @@ EOF
 if command -v terraform &>/dev/null; then
   complete -C terraform terraform tf
 fi
+export PATH="$HOME/.local/bin:$PATH"
