@@ -19,6 +19,7 @@ sudo apt update
 # swayidle: idle manager (auto-lock, display off)
 # swaybg: wallpaper setter
 # wev: wayland event/key viewer for debugging keybindings
+# network-manager: network management (provides nmtui for waybar)
 sudo apt install -y \
   sway \
   foot \
@@ -35,7 +36,8 @@ sudo apt install -y \
   swaylock \
   swayidle \
   swaybg \
-  wev
+  wev \
+  network-manager
 
 # allow user to control display brightness
 if ! id -nG "$USER" | grep -qw video; then

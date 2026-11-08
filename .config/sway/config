@@ -1,6 +1,3 @@
-# Requires: foot fuzzel waybar pavucontrol blueman wireplumber(wpctl) brightnessctl grim
-# Font: MesloLGLDZNerdFont-Regular.ttf in ~/.fonts, then fc-cache -f
-
 set $mod Mod4
 set $left h
 set $down j

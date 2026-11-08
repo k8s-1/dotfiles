@@ -16,11 +16,8 @@
     "format": "\uf294 {status}",
     "format-on": "\uf294 on",
     "format-off": "\uf294 off",
-    "format-disabled": "\uf294 off",
     "format-connected": "\uf294 {device_alias}",
-    "format-no-controller": "\uf294 n/a",
     "on-click": "blueman-manager",
-    "on-click-right": "bluetoothctl power $(bluetoothctl show | grep -q 'Powered: yes' && echo off || echo on)",
     "tooltip-format": "{controller_alias} {status}"
   },
   "network": {
