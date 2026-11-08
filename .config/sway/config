@@ -100,10 +100,10 @@ bindsym $mod+r mode "resize"
 bindsym --locked XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
 bindsym --locked XF86AudioMicMute exec ~/.config/sway/mic-toggle.sh
 bindsym $mod+m exec ~/.config/sway/mic-toggle.sh
-bindsym --locked XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-
-bindsym --locked XF86AudioRaiseVolume exec sh -c 'wpctl inspect @DEFAULT_AUDIO_SINK@ | grep -q "node.name = .bluez_output" && L=0.3 || L=1.0 && wpctl set-volume -l $L @DEFAULT_AUDIO_SINK@ 2%+'
-bindsym $mod+bracketleft exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-
-bindsym $mod+bracketright exec sh -c 'wpctl inspect @DEFAULT_AUDIO_SINK@ | grep -q "node.name = .bluez_output" && L=0.3 || L=1.0 && wpctl set-volume -l $L @DEFAULT_AUDIO_SINK@ 2%+'
+bindsym --locked XF86AudioLowerVolume exec ~/.config/sway/volume.sh down
+bindsym --locked XF86AudioRaiseVolume exec ~/.config/sway/volume.sh up
+bindsym $mod+bracketleft exec ~/.config/sway/volume.sh down
+bindsym $mod+bracketright exec ~/.config/sway/volume.sh up
 bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
 bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
 
