@@ -26,6 +26,7 @@ packages=(
   pipewire  # audio/video server
   pipewire-pulse  # PulseAudio compatibility (needed by pavucontrol and waybar)
   xdg-desktop-portal-wlr  # screen sharing and camera/mic portal for sway
+  usbguard  # USB device authorization policy
 )
 
 for pkg in "${packages[@]}"; do
