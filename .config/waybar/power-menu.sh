@@ -1,5 +1,5 @@
 #!/bin/sh
-choice=$(printf 'Lock\nLogout\nRestart\nShutdown\n' | fuzzel --dmenu --config="$HOME/.config/waybar/power-menu.ini")
+choice=$(printf 'Lock\nLogout\nRestart\nShutdown\n' | fuzzel --dmenu --prompt='Power: ' --font='DejaVu Sans:size=16' --width=24 --lines=4)
 case "$choice" in
   Lock) swaylock -f -c 000000 ;;
   Logout) swaymsg exit ;;

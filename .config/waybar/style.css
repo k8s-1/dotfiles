@@ -4,7 +4,7 @@
 }
 
 window#waybar {
-  background: #323232;
+  background: rgba(0, 0, 0, 0.35);
   color: #ffffff;
 }
 
@@ -15,7 +15,7 @@ window#waybar {
 
 #workspaces button.focused {
   color: #ffffff;
-  background: #5c5c5c;
+  background: #3d4474;
 }
 
 #pulseaudio,
