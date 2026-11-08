@@ -12,9 +12,7 @@ if ! sudo grep -Eq '^ImplicitPolicyTarget=block\s*$' "$conf"; then
   exit 1
 fi
 
-if ! systemctl is-enabled --quiet usbguard.service || ! systemctl is-active --quiet usbguard.service; then
-  echo "usbguard: service is not enabled and running" >&2
-  exit 1
-fi
+sudo systemctl enable usbguard.service
+sudo systemctl start usbguard.service
 
 echo "usbguard: ok"
