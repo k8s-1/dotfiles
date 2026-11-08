@@ -8,7 +8,11 @@ if [ "${#devices[@]}" -eq 0 ]; then
   exit 0
 fi
 
-PS3="allow blocked device> "
+for ((i = 0; i < ${#devices[@]}; i++)); do
+  devices[i]+=$'\n'
+done
+
+PS3="allow blocked device N) > "
 select choice in "${devices[@]}"; do
   [ -n "$choice" ] && break
 done
