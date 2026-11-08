@@ -22,6 +22,11 @@ https://neovim.io/doc/user/lsp.html
 :checkhealth vim.lsp
 ```
 
+## Picker / completion menus
+- ctrl-n / ctrl-p -- next / previous item (fzf, cmp, :, /, ?)
+- fzf-lua: TAB select, alt-a select all, alt-q send to quickfix
+- cmp: TAB next item / next snippet param, CR confirm, ctrl-e abort, ctrl-space open
+
 ## Structure
 ```
 .
