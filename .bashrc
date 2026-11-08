@@ -92,6 +92,7 @@ fi
 
 # Alias
 alias up="sudo apt update && sudo apt upgrade -y && sudo apt clean"
+alias up-firmware="sudo fwupdmgr refresh && sudo fwupdmgr get-updates && sudo fwupdmgr update"
 
 alias v='nvim'
 

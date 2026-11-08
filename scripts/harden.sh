@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
 # setup ufw
 
 if ! dpkg -s ufw 2>/dev/null | grep -q '^Status: install ok installed'; then
@@ -25,7 +28,8 @@ sudo systemctl mask ssh.service ssh.socket sshd.service
 
 # kernel hardening
 
-sudo tee /etc/sysctl.d/98-hardening.conf >/dev/null <<'EOF'
+f=/etc/sysctl.d/98-hardening.conf
+cat >"$tmp" <<'EOF'
 kernel.kptr_restrict=2
 kernel.dmesg_restrict=1
 kernel.yama.ptrace_scope=1
@@ -46,18 +50,28 @@ net.ipv6.conf.all.accept_source_route=0
 net.ipv6.conf.default.accept_source_route=0
 net.ipv4.icmp_echo_ignore_broadcasts=1
 EOF
-sudo sysctl --system >/dev/null
+if ! sudo cmp -s "$tmp" "$f"; then
+  sudo install -D -m 644 "$tmp" "$f"
+  sudo sysctl --system >/dev/null
+fi
 
 # unattended upgrades
 
 if ! dpkg -s unattended-upgrades 2>/dev/null | grep -q '^Status: install ok installed'; then
   sudo apt install -y unattended-upgrades
 fi
-sudo systemctl enable --now unattended-upgrades
+f=/etc/apt/apt.conf.d/20auto-upgrades
+cat >"$tmp" <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+if ! sudo cmp -s "$tmp" "$f"; then
+  sudo install -D -m 644 "$tmp" "$f"
+fi
+sudo systemctl enable --now unattended-upgrades apt-daily.timer apt-daily-upgrade.timer
 
 # quad9 secure dns https://quad9.net/
 f=/etc/systemd/resolved.conf.d/dot.conf
-tmp=$(mktemp)
 cat >"$tmp" <<'EOF'
 [Resolve]
 DNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net
@@ -68,4 +82,3 @@ if ! sudo cmp -s "$tmp" "$f"; then
   sudo install -D -m 644 "$tmp" "$f"
   sudo systemctl restart systemd-resolved
 fi
-rm -f "$tmp"
