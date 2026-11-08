@@ -24,6 +24,6 @@ net.ipv6.conf.default.accept_source_route=0
 net.ipv4.icmp_echo_ignore_broadcasts=1
 EOF
 
-if install_if_changed /etc/sysctl.d/98-hardening.conf; then
+if install_if_changed /etc/sysctl.d/99-hardening.conf; then
   sudo sysctl --system >/dev/null
 fi
