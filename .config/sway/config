@@ -117,3 +117,5 @@ exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 0
 exec swayidle -w timeout 600 'brightnessctl -s set 2%' resume 'brightnessctl -r'
 
 include /etc/sway/config.d/*
+
+exec_always "pkill -xf \"/bin/sh /home/yf/.config/sway/auto-screen.sh\"; exec ~/.config/sway/auto-screen.sh"
