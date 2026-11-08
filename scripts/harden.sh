@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "run as a regular user, not root" >&2
+  exit 1
+fi
+
 dir=$(cd "$(dirname "$0")" && pwd)/security
 failed=()
 
