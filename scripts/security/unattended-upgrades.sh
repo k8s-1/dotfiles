@@ -2,7 +2,7 @@
 set -e
 source "$(dirname "$0")/../lib/common.sh"
 
-apt_install unattended-upgrades
+pkg_install unattended-upgrades
 
 cat >"$tmp" <<'EOF'
 APT::Periodic::Update-Package-Lists "1";

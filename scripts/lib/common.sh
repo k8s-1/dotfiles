@@ -1,7 +1,9 @@
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 
-apt_install() {
+command -v apt-get
+
+pkg_install() {
   local missing=() p
   for p in "$@"; do
     dpkg -s "$p" 2>/dev/null | grep -q '^Status: install ok installed' || missing+=("$p")

@@ -2,7 +2,11 @@
 set -e
 source "$(dirname "$0")/../lib/common.sh"
 
-apt_install usbguard
+if ! dpkg -s usbguard 2>/dev/null | grep -q '^Status: install ok installed'; then
+  pkg_install usbguard
+  usbguard generate-policy > "$tmp"
+  sudo install -m 600 "$tmp" /etc/usbguard/rules.conf
+fi
 
 conf=/etc/usbguard/usbguard-daemon.conf
 

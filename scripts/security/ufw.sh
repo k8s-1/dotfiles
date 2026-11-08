@@ -2,7 +2,7 @@
 set -e
 source "$(dirname "$0")/../lib/common.sh"
 
-apt_install ufw
+pkg_install ufw
 
 status=$(sudo ufw status verbose)
 
