@@ -54,3 +54,18 @@ if ! dpkg -s unattended-upgrades 2>/dev/null | grep -q '^Status: install ok inst
   sudo apt install -y unattended-upgrades
 fi
 sudo systemctl enable --now unattended-upgrades
+
+# quad9 secure dns https://quad9.net/
+f=/etc/systemd/resolved.conf.d/dot.conf
+tmp=$(mktemp)
+cat >"$tmp" <<'EOF'
+[Resolve]
+DNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net
+DNSOverTLS=yes
+Domains=~.
+EOF
+if ! sudo cmp -s "$tmp" "$f"; then
+  sudo install -D -m 644 "$tmp" "$f"
+  sudo systemctl restart systemd-resolved
+fi
+rm -f "$tmp"
