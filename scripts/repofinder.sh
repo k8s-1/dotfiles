@@ -16,10 +16,10 @@ $(find "$CODE_DIR" -maxdepth 2 -type d -name '.git' -prune -exec dirname {} \; |
 fi
 
 # fuzzy select repo
-selected_repo=$(printf "%s\n%s\n" "$dirs" \
-  | sort \
-  | uniq \
-  | fzf --height 40% --border --ansi --prompt "Select a repository: ") || true
+selected_repo=$(printf "%s\n%s\n" "$dirs" |
+  sort |
+  uniq |
+  fzf --height 40% --border --ansi --prompt "Select a repository: ") || true
 
 if [ ! -d "$selected_repo" ]; then
   echo "[repo-finder]: repo not found... clone it."

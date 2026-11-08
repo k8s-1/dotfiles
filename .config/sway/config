@@ -67,6 +67,8 @@ bindsym $mod+Shift+9 move container to workspace number 9
 bindsym $mod+Shift+0 move container to workspace number 10
 
 bindsym $mod+b splith
+# Super+Shift+Return: open default browser (set via: xdg-settings set default-web-browser firefox.desktop)
+bindsym $mod+Shift+Return exec gtk-launch "$(xdg-settings get default-web-browser)"
 bindsym $mod+v splitv
 bindsym $mod+s layout stacking
 bindsym $mod+w layout tabbed

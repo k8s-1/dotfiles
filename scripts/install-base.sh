@@ -4,13 +4,13 @@ set -e
 sudo apt update
 
 packages=(
-  stow  # symlink dotfiles
-  tmux  # terminal multiplexer
-  fzf  # fuzzy finder (used by bashrc and justfile)
-  jq  # json processor (used by justfile)
-  golang-go  # go toolchain
-  just  # task runner
-  build-essential  # make, gcc tooling
+  stow            # symlink dotfiles
+  tmux            # terminal multiplexer
+  fzf             # fuzzy finder (used by bashrc and justfile)
+  jq              # json processor (used by justfile)
+  golang-go       # go toolchain
+  just            # task runner
+  build-essential # make, gcc tooling
 )
 
 for pkg in "${packages[@]}"; do
