@@ -27,6 +27,7 @@ bindsym $mod+Shift+b exec blueman-manager
 bindsym $mod+Shift+s exec sh -c 'grim -g "$(slurp)" - | wl-copy'
 bindsym $mod+Ctrl+l exec swaylock -f -c 000000
 bindsym $mod+Shift+o move workspace to output right
+bindsym $mod+Shift+p exec ~/.config/sway/screen-toggle.sh eDP-1
 
 bindsym $mod+$left focus left
 bindsym $mod+$down focus down
