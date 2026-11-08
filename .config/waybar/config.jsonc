@@ -24,7 +24,7 @@
     "format-wifi": "\uf1eb {essid}",
     "format-ethernet": "\uf6ff ETH",
     "format-disconnected": "\uf1eb off",
-    "on-click": "foot -e nmtui",
+    "on-click": "foot --app-id=nmtui -e nmtui",
     "tooltip-format-wifi": "{essid} {signalStrength}%"
   },
   "battery": {
