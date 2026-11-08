@@ -1,0 +1,18 @@
+[global]
+font = DejaVu Sans 14
+width = (300, 400)
+origin = top-right
+offset = (20, 50)
+padding = 16
+horizontal_padding = 20
+frame_width = 0
+corner_radius = 0
+enable_recursive_icon_lookup = true
+icon_theme = Papirus-Dark, Adwaita, HighContrast
+icon_position = left
+min_icon_size = 48
+max_icon_size = 64
+
+[urgency_normal]
+background = "#0000005a"
+foreground = "#ffffff"
