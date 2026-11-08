@@ -3,8 +3,8 @@ set -e
 source "$(dirname "$0")/../lib/common.sh"
 
 hosts=/etc/hosts
-begin="# BEGIN harden.sh managed block"
-end="# END harden.sh managed block"
+begin="# BEGIN dotfiles harden.sh managed block"
+end="# END dotfiles harden.sh managed block"
 
 if [ ! -f "$hosts.orig" ]; then
   sudo cp -p "$hosts" "$hosts.orig"
