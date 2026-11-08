@@ -1,0 +1,44 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 32,
+  "modules-left": ["sway/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["pulseaudio", "bluetooth", "network", "battery", "tray", "custom/power"],
+  "clock": { "format": "{:%a %d %b  %H:%M}" },
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-icons": { "default": ["\uf027", "\uf027", "\uf028"] },
+    "format-muted": "\uf026 muted",
+    "on-click": "pavucontrol"
+  },
+  "bluetooth": {
+    "format": "\uf294 {status}",
+    "format-on": "\uf294 on",
+    "format-off": "\uf294 off",
+    "format-disabled": "\uf294 off",
+    "format-connected": "\uf294 {device_alias}",
+    "format-no-controller": "\uf294 n/a",
+    "on-click": "blueman-manager",
+    "on-click-right": "bluetoothctl power $(bluetoothctl show | grep -q 'Powered: yes' && echo off || echo on)",
+    "tooltip-format": "{controller_alias} {status}"
+  },
+  "network": {
+    "format-wifi": "\uf1eb {essid}",
+    "format-ethernet": "\uf6ff ETH",
+    "format-disconnected": "\uf1eb off",
+    "on-click": "foot -e nmtui",
+    "tooltip-format-wifi": "{essid} {signalStrength}%"
+  },
+  "battery": {
+    "format": "{icon} {capacity}%",
+    "format-charging": "\uf1e6 {capacity}%",
+    "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"]
+  },
+  "tray": { "spacing": 8 },
+  "custom/power": {
+    "format": "\uf011",
+    "tooltip": false,
+    "on-click": "~/.config/waybar/power-menu.sh"
+  }
+}

@@ -1,0 +1,31 @@
+* {
+  font-family: "DejaVu Sans", "MesloLGLDZ Nerd Font", FontAwesome, sans-serif;
+  font-size: 14px;
+}
+
+window#waybar {
+  background: #323232;
+  color: #ffffff;
+}
+
+#workspaces button {
+  color: #aaaaaa;
+  padding: 0 8px;
+}
+
+#workspaces button.focused {
+  color: #ffffff;
+  background: #5c5c5c;
+}
+
+#pulseaudio,
+#bluetooth,
+#network,
+#battery,
+#tray {
+  padding: 0 10px;
+}
+
+#custom-power {
+  padding: 0 12px;
+}
