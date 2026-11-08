@@ -57,4 +57,6 @@ EOF
 
 if install_if_changed "$hosts" 644; then
   echo "hosts: updated"
+else
+  echo "hosts: ok"
 fi
